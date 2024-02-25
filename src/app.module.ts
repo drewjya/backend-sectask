@@ -7,7 +7,9 @@ import { ChatGateway } from './chat/chat.gateway';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
 
+import { CacheModule } from '@nestjs/cache-manager';
 import { JwtModule } from '@nestjs/jwt';
+import { redisStore } from 'cache-manager-redis-yet';
 import { FileModule } from './file/file.module';
 import { FindingModule } from './finding/finding.module';
 import { ProjectModule } from './project/project.module';
@@ -23,6 +25,15 @@ import { SubprojectModule } from './subproject/subproject.module';
     FileModule,
     FindingModule,
     JwtModule,
+
+    CacheModule.register({
+      store: redisStore,
+      socket: {
+        host: 'localhost',
+        port: 6379,
+      },
+      isGlobal: true,
+    }),
   ],
   controllers: [AuthController],
   providers: [ChatGateway, AuthService],

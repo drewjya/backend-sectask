@@ -9,6 +9,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AuthFilter } from './auth/auth.filter';
 import { PrismaClientExceptionFilter } from './prisma/prisma.filter';
+import {
+  Response,
+  TransformInterceptor,
+} from './transform/transform.interceptor';
 import { SocketAdapter } from './utls/adapter/socket.adapter';
 
 async function bootstrap() {
@@ -20,14 +24,13 @@ async function bootstrap() {
         for (const key of errors) {
           obj[key.property] = key.constraints[Object.keys(key.constraints)[0]];
         }
-        throw new HttpException(
-          {
-            message: 'invalid_request',
-            status: HttpStatus.BAD_REQUEST,
-            error: obj,
-          },
-          400,
-        );
+        const res: Response<any> = {
+          data: null,
+          message: 'invalid_request',
+          status: HttpStatus.BAD_REQUEST,
+          error: obj,
+        };
+        throw new HttpException(res, 400);
       },
       stopAtFirstError: true,
     }),
@@ -48,6 +51,7 @@ async function bootstrap() {
   const { httpAdapter } = app.get(HttpAdapterHost);
   app.useGlobalFilters(new PrismaClientExceptionFilter(httpAdapter));
   app.useGlobalFilters(new AuthFilter(httpAdapter));
+  app.useGlobalInterceptors(new TransformInterceptor());
   await app.listen(3000);
 }
 bootstrap();

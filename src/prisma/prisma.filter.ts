@@ -19,10 +19,10 @@ export class PrismaClientExceptionFilter extends BaseExceptionFilter {
         let error = {};
         error[key] = 'unique';
         const errorResponse = {
+          data: null,
+          message: 'invalid_request',
           status: status,
           error: error,
-          message: 'invalid_request',
-          data: null,
         };
 
         response.json(errorResponse).status(status);

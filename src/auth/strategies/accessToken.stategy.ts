@@ -12,10 +12,13 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: process.env.JWT_ACCESS_SECRET,
+      passReqToCallback: true,
     });
   }
 
-  validate(payload: JwtPayload) {
-    return payload;
+  validate(req: any, payload: JwtPayload) {
+    const accessToken = req.get('Authorization').replace('Bearer', '').trim();
+
+    return { ...payload, accessToken };
   }
 }
