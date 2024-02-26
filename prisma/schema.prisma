@@ -132,12 +132,14 @@ model Finding {
 enum ProjectRole {
   VIEWER
   OWNER
+  DEVELOPER
+  TECHNICAL_WRITER
 }
 
 enum SubprojectRole {
   PM
-  GUEST
-  CONSULTANT
   DEVELOPER
   TECHNICAL_WRITER
+  GUEST
+  CONSULTANT
 }

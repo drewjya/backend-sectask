@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
-import { SubprojectService } from './subproject.service';
+import { FileUploadModule } from 'src/file-upload/file-upload.module';
+import { PrismaModule } from 'src/prisma/prisma.module';
 import { SubprojectController } from './subproject.controller';
+import { SubprojectService } from './subproject.service';
 
 @Module({
   controllers: [SubprojectController],
   providers: [SubprojectService],
+  imports: [PrismaModule, FileUploadModule],
 })
 export class SubprojectModule {}

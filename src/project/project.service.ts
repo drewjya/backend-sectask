@@ -3,7 +3,6 @@ import { FileUploadService } from 'src/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utls/exception/api.exception';
 import { CreateProjectDto } from './dto/create-project.dto';
-import { UpdateProjectDto } from './dto/update-project.dto';
 
 @Injectable()
 export class ProjectService {
@@ -255,17 +254,92 @@ export class ProjectService {
     });
   }
 
-  findAll() {
-    return `This action returns all project`;
+  async searchMember(email: string, projectId: number) {
+    let users = await this.prisma.user.findMany({
+      where: {
+        projects: {
+          none: {
+            projectId: projectId,
+          },
+        },
+        email: {
+          startsWith: email,
+        },
+      },
+    });
+
+    let result: {
+      id: number;
+      email: string;
+      name: string;
+    }[] = [];
+    for (const item of users) {
+      result.push({
+        id: item.id,
+        email: item.email,
+        name: item.name,
+      });
+    }
+    return result;
+  }
+
+  async addMember(projectId: number, userId: number, ownerId: number) {
+    let project = await this.prisma.project.findUnique({
+      where: {
+        id: projectId,
+        members: {
+          some: {
+            memberId: ownerId,
+            role: 'OWNER',
+          },
+        },
+      },
+      include: {
+        members: true,
+        recentActivities: true,
+      },
+    });
+    if (project === null) {
+      throw new ApiException(404, 'unauthorized');
+    }
+
+    let isMember = project.members.some((val) => val.memberId === userId);
+    if (isMember) {
+      throw new ApiException(400, 'already_member');
+    }
+    return this.prisma.project.update({
+      data: {
+        members: {
+          create: {
+            memberId: userId,
+            role: 'VIEWER',
+          },
+        },
+        recentActivities: {
+          update: {
+            data: {
+              title: `Member [${userId}] Added to Project [${projectId}]`,
+              description: `Member [${userId}] has been added to Project [${projectId}]`,
+            },
+            where: {
+              id: project.recentActivities.id,
+            },
+          },
+        },
+      },
+      where: {
+        id: projectId,
+      },
+    });
   }
 
   findOne(id: number) {
     return `This action returns a #${id} project`;
   }
 
-  update(id: number, updateProjectDto: UpdateProjectDto) {
-    return `This action updates a #${id} project`;
-  }
+  // update(id: number, updateProjectDto: UpdateProjectDto) {
+  //   return `This action updates a #${id} project`;
+  // }
 
   remove(id: number) {
     return `This action removes a #${id} project`;
