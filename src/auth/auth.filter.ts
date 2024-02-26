@@ -13,9 +13,10 @@ export class AuthFilter extends BaseExceptionFilter {
     const status = exception.getStatus();
     let error = {};
     const resp = exception.getResponse();
-
+    let message = 'invalid_request';
     if (typeof resp === 'string' || resp instanceof String) {
       error['@root'] = resp;
+      message = `${resp}`;
     } else {
       error = resp;
     }
@@ -25,10 +26,10 @@ export class AuthFilter extends BaseExceptionFilter {
     const errorResponse = {
       status: status,
       error: error,
-      message: 'invalid_request',
+      message: message,
       data: null,
     };
 
-    response.json(errorResponse).status(status);
+    response.status(status).json(errorResponse);
   }
 }

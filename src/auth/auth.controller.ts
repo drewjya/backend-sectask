@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guards/accesToken.guard';
 import { RefreshTokenGuard } from 'src/common/guards/refreshToken.guards';
 import { AuthService } from './auth.service';
+import { ChangePasswordDto } from './dto/changePassword.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -38,7 +39,11 @@ export class AuthController {
 
   @UseGuards(AccessTokenGuard)
   @Post('change_password')
-  changePassword() {
-    return;
+  changePassword(
+    @Req() req: Request,
+    @Body() changePassword: ChangePasswordDto,
+  ) {
+    const userId = req.user['sub'];
+    return this.authService.changePassword(userId, changePassword);
   }
 }

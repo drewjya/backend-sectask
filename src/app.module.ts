@@ -14,6 +14,8 @@ import { FileModule } from './file/file.module';
 import { FindingModule } from './finding/finding.module';
 import { ProjectModule } from './project/project.module';
 import { SubprojectModule } from './subproject/subproject.module';
+import { MinioClientModule } from './minio-client/minio-client.module';
+import { FileUploadModule } from './file-upload/file-upload.module';
 
 @Module({
   imports: [
@@ -34,6 +36,10 @@ import { SubprojectModule } from './subproject/subproject.module';
       },
       isGlobal: true,
     }),
+
+    MinioClientModule,
+
+    FileUploadModule,
   ],
   controllers: [AuthController],
   providers: [ChatGateway, AuthService],
