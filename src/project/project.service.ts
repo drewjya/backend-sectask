@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { FileUploadService } from 'src/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ApiException } from 'src/utls/exception/api.exception';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 
@@ -81,6 +82,7 @@ export class ProjectService {
         title: string;
         description: string;
         createdAt: Date;
+        updatedAt: Date;
         projectPicture?: string;
       };
       let projectUpdates: Record<number, RecentUpdates> = {};
@@ -106,6 +108,7 @@ export class ProjectService {
           title: key.recentActivities.title,
           description: key.recentActivities.description,
           createdAt: key.recentActivities.createdAt,
+          updatedAt: key.recentActivities.updatedAt,
           projectPicture: null,
         };
         if (key.projectPicture) {
@@ -143,6 +146,7 @@ export class ProjectService {
           title: key.recentActivities.title,
           description: key.recentActivities.description,
           createdAt: key.recentActivities.createdAt,
+          updatedAt: key.recentActivities.updatedAt,
           projectPicture: null,
         };
         let projectRoot = projectUpdates[key.projectId];
@@ -180,6 +184,7 @@ export class ProjectService {
           title: key.recentActivities.title,
           description: key.recentActivities.description,
           createdAt: key.recentActivities.createdAt,
+          updatedAt: key.recentActivities.updatedAt,
           projectPicture: null,
         };
         let subprojectRoot = subprojectUpdates[key.subProjectId];
@@ -197,13 +202,59 @@ export class ProjectService {
       ];
 
       recentUpdates.sort(
-        (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+        (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
       );
       return recentUpdates;
     } catch (error) {
       throw error;
     }
   }
+
+  async archiveProject(projectId: number, userId: number) {
+    const project = await this.prisma.project.findUnique({
+      where: {
+        id: projectId,
+        archived: false,
+        members: {
+          some: {
+            memberId: userId,
+            role: 'OWNER',
+          },
+        },
+      },
+    });
+    if (project === null) {
+      throw new ApiException(404, 'not_found');
+    }
+    return this.prisma.project.update({
+      data: {
+        archived: true,
+        recentActivities: {
+          update: {
+            data: {
+              title: `Project [${projectId}] Archived`,
+              description: `Project [${projectId}] has been archived by [${userId}]`,
+            },
+          },
+        },
+      },
+      where: {
+        id: projectId,
+        members: {
+          some: {
+            memberId: userId,
+            role: 'OWNER',
+          },
+        },
+      },
+      include: {
+        members: true,
+
+        recentActivities: true,
+      },
+    });
+  }
+
   findAll() {
     return `This action returns all project`;
   }

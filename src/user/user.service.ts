@@ -31,6 +31,17 @@ export class UserService {
     editUser: EditUserDto,
     file?: Express.Multer.File,
   ) {
+    let oldUser = await this.prisma.user.findFirst({
+      where: {
+        email: editUser.email,
+      },
+    });
+    if (oldUser && oldUser.id !== id) {
+      throw new ApiException(400, {
+        email: 'already_exists',
+      });
+    }
+
     if (file) {
       let old = await this.prisma.user.findFirst({
         where: {

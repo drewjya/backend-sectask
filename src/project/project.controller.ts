@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guards/accesToken.guard';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -17,12 +18,14 @@ export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
 
   @UseGuards(AccessTokenGuard)
+  @ApiBearerAuth('access-token')
   @Get('active')
   active(@Req() req: Request) {
     let userId = req.user['sub'];
     return this.projectService.active(userId);
   }
   @UseGuards(AccessTokenGuard)
+  @ApiBearerAuth('access-token')
   @Get('recent_updates')
   recentUpdates(@Req() req: Request) {
     let userId = req.user['sub'];
@@ -35,11 +38,13 @@ export class ProjectController {
     return this.projectService.create(userId, createProjectDto);
   }
 
+  @UseGuards(AccessTokenGuard)
   @Post(':projectId/archive')
-  archiveProject(@Param('projectId') projectId: string) {
-    // return this.projectService.archiveProject(+projectId);
+  archiveProject(@Req() req: Request, @Param('projectId') projectId: string) {
+    const userId = req.user['sub'];
+    return this.projectService.archiveProject(+projectId, userId);
   }
 
   @Post(':projectId/member')
-  addMember(@Param('projectId') projectId: string) {}
+  addMember(@Req() req: Request, @Param('projectId') projectId: string) {}
 }

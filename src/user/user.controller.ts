@@ -12,6 +12,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guards/accesToken.guard';
 import { EditUserDto } from './dto/editUser.dto';
@@ -23,6 +24,7 @@ export class UserController {
 
   @Get(':userId')
   @UseGuards(AccessTokenGuard)
+  @ApiBearerAuth('access-token')
   async getUserById(@Param('userId') id: string) {
     const user = await this.userService.findOne(+id);
     const profilePicture = user.profilePicture
@@ -37,7 +39,27 @@ export class UserController {
   }
 
   @UseGuards(AccessTokenGuard)
+  @ApiBearerAuth('access-token')
   @Put('')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+        },
+        email: {
+          type: 'string',
+        },
+
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @UseInterceptors(FileInterceptor('file', {}))
   editUser(
     @Req() req: Request,
@@ -54,6 +76,7 @@ export class UserController {
     return this.userService.updateUser(userId, editUserDto, file);
   }
   @UseGuards(AccessTokenGuard)
+  @ApiBearerAuth('access-token')
   @Delete('picture')
   remove(@Req() req: Request) {
     const userId = req.user['sub'];
