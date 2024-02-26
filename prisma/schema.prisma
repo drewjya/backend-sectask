@@ -14,15 +14,17 @@ datasource db {
 }
 
 model User {
-  id               Int       @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   name             String
-  email            String    @unique
+  email            String             @unique
   password         String
   profilePictureId Int?
-  profilePicture   File?     @relation(fields: [profilePictureId], references: [id])
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  profilePicture   File?              @relation(fields: [profilePictureId], references: [id])
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
   deletedAt        DateTime?
+  projects         ProjectMember[]
+  subProjects      SubprojectMember[]
 }
 
 model File {
@@ -33,5 +35,109 @@ model File {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
-  User        User[]
+  users       User[]
+
+  projectAttachments    Project[]    @relation("ProjectAttachments")
+  projectReports        Project[]    @relation("ProjectReports")
+  subProjectAttachments SubProject[] @relation("SubProjectAttachments")
+  subProjectReports     SubProject[] @relation("SubProjectReports")
+  project               Project[]
+}
+
+model RecentActivites {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  Project    Project[]
+  SubProject SubProject[]
+  Finding    Finding[]
+}
+
+model Project {
+  id               Int             @id @default(autoincrement())
+  name             String
+  archived         Boolean
+  startDate        DateTime
+  endDate          DateTime
+  projectPictureId Int?
+  projectPicture   File?           @relation(fields: [projectPictureId], references: [id])
+  members          ProjectMember[]
+  attachments      File[]          @relation("ProjectAttachments")
+  reports          File[]          @relation("ProjectReports")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  deletedAt        DateTime?
+
+  subProjects       SubProject[]
+  recentActivities  RecentActivites @relation(fields: [recentActivitesId], references: [id])
+  recentActivitesId Int
+}
+
+model ProjectMember {
+  id        Int         @id @default(autoincrement())
+  member    User        @relation(fields: [memberId], references: [id])
+  memberId  Int
+  role      ProjectRole
+  project   Project     @relation(fields: [projectId], references: [id])
+  projectId Int
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  deletedAt DateTime?
+}
+
+model SubProject {
+  id                Int                @id @default(autoincrement())
+  name              String
+  startDate         DateTime
+  endDate           DateTime
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+  members           SubprojectMember[]
+  findings          Finding[]
+  attachments       File[]             @relation("SubProjectAttachments")
+  reports           File[]             @relation("SubProjectReports")
+  recentActivities  RecentActivites    @relation(fields: [recentActivitesId], references: [id])
+  recentActivitesId Int
+  project           Project            @relation(fields: [projectId], references: [id])
+  projectId         Int
+}
+
+model SubprojectMember {
+  id           Int            @id @default(autoincrement())
+  role         SubprojectRole
+  subproject   SubProject     @relation(fields: [subprojectId], references: [id])
+  subprojectId Int
+  user         User           @relation(fields: [userId], references: [id])
+  userId       Int
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
+}
+
+model Finding {
+  id                Int             @id @default(autoincrement())
+  title             String
+  description       String?
+  subProject        SubProject      @relation(fields: [subProjectId], references: [id])
+  subProjectId      Int
+  recentActivities  RecentActivites @relation(fields: [recentActivitesId], references: [id])
+  recentActivitesId Int
+}
+
+enum ProjectRole {
+  VIEWER
+  OWNER
+}
+
+enum SubprojectRole {
+  PM
+  GUEST
+  CONSULTANT
+  DEVELOPER
+  TECHNICAL_WRITER
 }
