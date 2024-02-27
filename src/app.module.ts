@@ -10,12 +10,12 @@ import { UserModule } from './user/user.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { JwtModule } from '@nestjs/jwt';
 import { redisStore } from 'cache-manager-redis-yet';
-import { FileModule } from './file/file.module';
+
+import { FileUploadModule } from './file-upload/file-upload.module';
 import { FindingModule } from './finding/finding.module';
+import { MinioClientModule } from './minio-client/minio-client.module';
 import { ProjectModule } from './project/project.module';
 import { SubprojectModule } from './subproject/subproject.module';
-import { MinioClientModule } from './minio-client/minio-client.module';
-import { FileUploadModule } from './file-upload/file-upload.module';
 
 @Module({
   imports: [
@@ -24,10 +24,8 @@ import { FileUploadModule } from './file-upload/file-upload.module';
     UserModule,
     ProjectModule,
     SubprojectModule,
-    FileModule,
     FindingModule,
     JwtModule,
-
     CacheModule.register({
       store: redisStore,
       socket: {
@@ -38,7 +36,6 @@ import { FileUploadModule } from './file-upload/file-upload.module';
     }),
 
     MinioClientModule,
-
     FileUploadModule,
   ],
   controllers: [AuthController],

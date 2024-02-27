@@ -26,6 +26,7 @@ export class ProjectController {
     let userId = req.user['sub'];
     return this.projectService.active(userId);
   }
+  
   @UseGuards(AccessTokenGuard)
   @ApiBearerAuth('access-token')
   @Get('recent_updates')

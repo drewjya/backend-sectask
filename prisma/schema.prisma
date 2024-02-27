@@ -120,13 +120,38 @@ model SubprojectMember {
 }
 
 model Finding {
-  id                Int             @id @default(autoincrement())
-  title             String
-  description       String?
+  id            Int     @id @default(autoincrement())
+  name          String
+  risk          String
+
+  description   Block[] @relation("FindingsDescription")
+  threatAndRisk Block[] @relation("FindingsThreat")
+  impact        Block[] @relation("FindingsImpact")
+  recomendation Block[] @relation("FindingsRecomendation")
+  retestResult  Block[] @relation("FindingsRetestResult")
+
   subProject        SubProject      @relation(fields: [subProjectId], references: [id])
   subProjectId      Int
   recentActivities  RecentActivites @relation(fields: [recentActivitesId], references: [id])
   recentActivitesId Int
+}
+
+
+
+
+model Block {
+  id                   String    @id @default(uuid())
+  content              String
+  previousBlockId      String?   @unique
+  previousBlock        Block?    @relation("BlockPreviousBlock", fields: [previousBlockId], references: [id])
+  nextBlock            Block?    @relation("BlockPreviousBlock")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  findingDescriptions  Finding[] @relation("FindingsDescription")
+  findingThreatAndRisk Finding[] @relation("FindingsThreat")
+  findingImpact        Finding[] @relation("FindingsImpact")
+  findingRecomendation Finding[] @relation("FindingsRecomendation")
+  findingRetestResult  Finding[] @relation("FindingsRetestResult")
 }
 
 enum ProjectRole {

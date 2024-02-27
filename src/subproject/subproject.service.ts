@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utls/exception/api.exception';
 import { AddSubMemberDto } from './dto/addSubMemberDto';
@@ -12,6 +12,22 @@ export class SubprojectService {
     userId: number,
     createSubprojectDto: CreateSubProjectDto,
   ) {
+    let project = await this.prisma.project.findUnique({
+      where: {
+        id: createSubprojectDto.projectId,
+        members: {
+          some: {
+            id: userId,
+            role: {
+              equals: 'OWNER',
+            },
+          },
+        },
+      },
+    });
+    if (!project) {
+      throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden');
+    }
     let subproject = await this.prisma.subProject.create({
       data: {
         name: createSubprojectDto.name,
@@ -34,6 +50,17 @@ export class SubprojectService {
         },
       },
     });
+
+    await this.prisma.recentActivites.update({
+      data: {
+        title: `SubProject [${createSubprojectDto.name}] Created`,
+        description: `SubProject [${createSubprojectDto.name}] has been created by [${userId}]`,
+      },
+      where: {
+        id: subproject.recentActivitesId,
+      },
+    });
+
     return {
       name: subproject.name,
       id: subproject.id,
@@ -94,14 +121,12 @@ export class SubprojectService {
     ownerId: number,
     member: AddSubMemberDto,
   ) {
-    console.log(ownerId);
-
     let subProject = await this.prisma.subProject.findFirst({
       where: {
         id: subProjectId, // Replace 1 with the actual subproject ID you want to search for
         members: {
           some: {
-            userId: 1,
+            userId: ownerId,
             role: 'PM',
           },
         },
@@ -109,6 +134,7 @@ export class SubprojectService {
       include: {
         members: true,
         recentActivities: true,
+        project: true,
       },
     });
 
@@ -131,7 +157,7 @@ export class SubprojectService {
       throw new ApiException(400, 'user_not_found');
     }
 
-    return this.prisma.subProject.update({
+    let a = await this.prisma.subProject.update({
       data: {
         members: {
           create: {
@@ -155,5 +181,16 @@ export class SubprojectService {
         id: subProjectId,
       },
     });
+
+    await this.prisma.recentActivites.update({
+      data: {
+        title: `Project ${subProject.project.name} Updated`,
+        description: `Member [${user.name}] has been added to SubProject [${subProject.name}]`,
+      },
+      where: {
+        id: subProject.project.recentActivitesId,
+      },
+    });
+    return a;
   }
 }

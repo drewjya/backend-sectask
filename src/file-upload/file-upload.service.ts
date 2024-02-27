@@ -1,7 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { ProjectRole } from '@prisma/client';
 import { BufferedFile } from 'src/minio-client/entity/file.entity';
 import { MinioClientService } from 'src/minio-client/minio-client.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ApiException } from 'src/utls/exception/api.exception';
+import { AddFileDto, DocumentType, FileType } from './dto/addFile.dto';
+import { DeleteFileDto } from './dto/deleteFile.dto';
 
 @Injectable()
 export class FileUploadService {
@@ -69,5 +73,276 @@ export class FileUploadService {
 
   public async deleteFile(name: string) {
     return this.minioClientService.delete(name);
+  }
+
+  public async createFileAttachment(
+    userId: number,
+    newFile: AddFileDto,
+    file: Express.Multer.File,
+  ) {
+    let uploadedImage = await this.minioClientService.upload(
+      this.convertToBufferedFile(file),
+    );
+    let attachment;
+    let report;
+    if (newFile.type === FileType.ATTACHMENT) {
+      attachment = {
+        create: {
+          contentType: file.mimetype,
+          imagePath: uploadedImage,
+          name: file.originalname,
+        },
+      };
+    } else {
+      report = {
+        create: {
+          contentType: file.mimetype,
+          imagePath: uploadedImage,
+          name: file.originalname,
+        },
+      };
+    }
+    let role: ProjectRole =
+      newFile.type === FileType.ATTACHMENT
+        ? ProjectRole.DEVELOPER
+        : ProjectRole.TECHNICAL_WRITER;
+    if (newFile.documentType === DocumentType.PROJECT) {
+      let oldProject = await this.prisma.project.findFirst({
+        where: {
+          id: newFile.documentId,
+          members: {
+            some: {
+              memberId: userId,
+            },
+          },
+        },
+        include: {
+          members: true,
+        },
+      });
+      if (!oldProject) {
+        throw new ApiException(400, 'project_not_found');
+      }
+
+      let isMember = oldProject.members.some(
+        (val) => val.memberId === userId && val.role === role,
+      );
+      if (!isMember) {
+        throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden');
+      }
+
+      let project = await this.prisma.project.update({
+        data: {
+          attachments: attachment,
+          reports: report,
+        },
+        where: {
+          id: newFile.documentId,
+        },
+      });
+      await this.prisma.recentActivites.update({
+        data: {
+          title: `Project ${project.name} Updated`,
+          description: `New file has been added to project ${project.name}`,
+        },
+        where: {
+          id: project.recentActivitesId,
+        },
+      });
+      return project;
+    } else if (newFile.documentType === DocumentType.SUBPROJECT) {
+      let oldProject = await this.prisma.subProject.findFirst({
+        where: {
+          id: newFile.documentId,
+          members: {
+            some: {
+              userId: userId,
+            },
+          },
+        },
+        include: {
+          members: true,
+        },
+      });
+      if (!oldProject) {
+        throw new ApiException(400, 'project_not_found');
+      }
+
+      let isMember = oldProject.members.some(
+        (val) => val.userId === userId && val.role === role,
+      );
+      if (!isMember) {
+        throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden');
+      }
+
+      let project = await this.prisma.project.update({
+        data: {
+          attachments: attachment,
+          reports: report,
+        },
+        where: {
+          id: newFile.documentId,
+        },
+      });
+      await this.prisma.recentActivites.update({
+        data: {
+          title: `Project ${project.name} Updated`,
+          description: `New file has been added to project ${project.name}`,
+        },
+        where: {
+          id: project.recentActivitesId,
+        },
+      });
+      return project;
+    }
+    throw new ApiException(400, 'invalid_document_type');
+  }
+
+  async deleteFileAttachment(
+    userId: number,
+    fileId: number,
+    deleteFile: DeleteFileDto,
+  ) {
+    let role =
+      deleteFile.type === FileType.ATTACHMENT
+        ? ProjectRole.DEVELOPER
+        : ProjectRole.TECHNICAL_WRITER;
+    let file = await this.prisma.file.findFirst({
+      where: {
+        id: fileId,
+      },
+    });
+    let attachment = null;
+    let reports = null;
+    if (deleteFile.type === FileType.ATTACHMENT) {
+      attachment = {
+        delete: {
+          id: fileId,
+        },
+        disconnect: {
+          id: fileId,
+        },
+      };
+    } else {
+      reports = {
+        delete: {
+          id: fileId,
+        },
+        disconnect: {
+          id: fileId,
+        },
+      };
+    }
+
+    if (!file) {
+      throw new ApiException(400, 'file_not_found');
+    }
+
+    if (deleteFile.documentType === DocumentType.PROJECT) {
+      let project = await this.prisma.project.findFirst({
+        where: {
+          id: deleteFile.documentId,
+          members: {
+            some: {
+              memberId: userId,
+            },
+          },
+        },
+        include: {
+          members: true,
+        },
+      });
+      if (!project) {
+        throw new ApiException(400, 'project_not_found');
+      }
+
+      let isMember = project.members.some(
+        (val) => val.memberId === userId && val.role === role,
+      );
+      if (!isMember) {
+        throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden');
+      }
+
+      let projectData = await this.prisma.project.update({
+        data: {
+          attachments: attachment,
+          reports: reports,
+        },
+        where: {
+          id: deleteFile.documentId,
+        },
+      });
+      await this.deleteFile(file.imagePath);
+      await this.prisma.recentActivites.update({
+        data: {
+          title: `Project ${projectData.name} Updated`,
+          description: `${deleteFile.type} has been deleted from project ${projectData.name}`,
+        },
+        where: {
+          id: projectData.recentActivitesId,
+        },
+      });
+      return projectData;
+    } else {
+      let subproject = await this.prisma.subProject.findFirst({
+        where: {
+          id: deleteFile.documentId,
+          members: {
+            some: {
+              userId: userId,
+            },
+          },
+        },
+        include: {
+          members: true,
+        },
+      });
+      if (!subproject) {
+        throw new ApiException(400, 'project_not_found');
+      }
+
+      let isMember = subproject.members.some(
+        (val) => val.userId === userId && val.role === role,
+      );
+      if (!isMember) {
+        throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden');
+      }
+      let projectData = await this.prisma.subProject.update({
+        data: {
+          attachments: attachment,
+          reports: reports,
+        },
+        where: {
+          id: deleteFile.documentId,
+        },
+        include: {
+          project: true,
+        },
+      });
+      await this.deleteFile(file.imagePath);
+
+      await this.prisma.$transaction([
+        this.prisma.recentActivites.update({
+          data: {
+            title: `Project ${projectData.project.name} Updated`,
+            description: `${deleteFile.type} has been deleted from project ${projectData.project.name}`,
+          },
+          where: {
+            id: projectData.project.recentActivitesId,
+          },
+        }),
+        this.prisma.recentActivites.update({
+          data: {
+            title: `SubProject ${projectData.name} Updated`,
+            description: `${deleteFile.type} has been deleted from subproject ${projectData.name}`,
+          },
+          where: {
+            id: projectData.recentActivitesId,
+          },
+        }),
+      ]);
+
+      return projectData;
+    }
   }
 }
