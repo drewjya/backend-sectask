@@ -11,8 +11,11 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { JwtModule } from '@nestjs/jwt';
 import { redisStore } from 'cache-manager-redis-yet';
 
+// import { WsJwtGuard } from './auth/ws-jwt/ws-jwt.guard';
+import { EventsModule } from './events/events.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
 import { FindingModule } from './finding/finding.module';
+import { MessageModule } from './message/message.module';
 import { MinioClientModule } from './minio-client/minio-client.module';
 import { ProjectModule } from './project/project.module';
 import { SubprojectModule } from './subproject/subproject.module';
@@ -32,13 +35,23 @@ import { SubprojectModule } from './subproject/subproject.module';
         host: 'localhost',
         port: 6379,
       },
+
       isGlobal: true,
     }),
 
     MinioClientModule,
     FileUploadModule,
+    EventsModule,
+    MessageModule,
   ],
   controllers: [AuthController],
-  providers: [ChatGateway, AuthService],
+  providers: [
+    ChatGateway,
+    AuthService,
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: WsJwtGuard,
+    // },
+  ],
 })
 export class AppModule {}
