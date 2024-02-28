@@ -5,7 +5,6 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AuthFilter } from './auth/auth.filter';
 import { PrismaClientExceptionFilter } from './prisma/prisma.filter';
@@ -14,6 +13,7 @@ import {
   TransformInterceptor,
 } from './transform/transform.interceptor';
 import { SocketAdapter } from './utls/adapter/socket.adapter';
+import { createSwagger } from './utls/config/swagger.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -38,36 +38,12 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.useWebSocketAdapter(new SocketAdapter(app));
 
-  const config = new DocumentBuilder()
-    .setTitle('Median')
-    .setDescription('The Median API description')
-    .setVersion('0.1')
-    .addBearerAuth(
-      {
-        // I was also testing it without prefix 'Bearer ' before the JWT
-        description: `[just text field] Please enter token in following format: Bearer <JWT>`,
-        name: 'Authorization',
-        bearerFormat: 'Bearer', // I`ve tested not to use this field, but the result was the same
-        scheme: 'Bearer',
-        type: 'http', // I`ve attempted type: 'apiKey' too
-        in: 'Header',
-      },
-      'access-token',
-    )
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  createSwagger(app);
 
   const { httpAdapter } = app.get(HttpAdapterHost);
   app.useGlobalFilters(new PrismaClientExceptionFilter(httpAdapter));
   app.useGlobalFilters(new AuthFilter(httpAdapter));
   app.useGlobalInterceptors(new TransformInterceptor());
   await app.listen(3000);
-
-  // const eventGateway = app.get(EventsGateway);
-  // setInterval(() => {
-  //   eventGateway.sendMessage();
-  // }, 2000);
 }
 bootstrap();
