@@ -83,6 +83,7 @@ export class FileUploadService {
     let uploadedImage = await this.minioClientService.upload(
       this.convertToBufferedFile(file),
     );
+    let documentId = parseInt(`${newFile.documentId}`);
     let attachment;
     let report;
     if (newFile.type === FileType.ATTACHMENT) {
@@ -109,7 +110,7 @@ export class FileUploadService {
     if (newFile.documentType === DocumentType.PROJECT) {
       let oldProject = await this.prisma.project.findFirst({
         where: {
-          id: newFile.documentId,
+          id: documentId,
           members: {
             some: {
               memberId: userId,
@@ -127,8 +128,10 @@ export class FileUploadService {
       let isMember = oldProject.members.some(
         (val) => val.memberId === userId && val.role === role,
       );
+      console.log(oldProject.members);
+
       if (!isMember) {
-        throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden');
+        throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden_project');
       }
 
       let project = await this.prisma.project.update({
@@ -137,7 +140,7 @@ export class FileUploadService {
           reports: report,
         },
         where: {
-          id: newFile.documentId,
+          id: documentId,
         },
       });
       await this.prisma.recentActivites.update({
@@ -153,7 +156,7 @@ export class FileUploadService {
     } else if (newFile.documentType === DocumentType.SUBPROJECT) {
       let oldProject = await this.prisma.subProject.findFirst({
         where: {
-          id: newFile.documentId,
+          id: documentId,
           members: {
             some: {
               userId: userId,
@@ -172,7 +175,7 @@ export class FileUploadService {
         (val) => val.userId === userId && val.role === role,
       );
       if (!isMember) {
-        throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden');
+        throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden_subproject');
       }
 
       let project = await this.prisma.project.update({
@@ -181,7 +184,7 @@ export class FileUploadService {
           reports: report,
         },
         where: {
-          id: newFile.documentId,
+          id: documentId,
         },
       });
       await this.prisma.recentActivites.update({
@@ -203,6 +206,7 @@ export class FileUploadService {
     fileId: number,
     deleteFile: DeleteFileDto,
   ) {
+    let documentId = parseInt(`${deleteFile.documentId}`);
     let role =
       deleteFile.type === FileType.ATTACHMENT
         ? ProjectRole.DEVELOPER
@@ -241,7 +245,7 @@ export class FileUploadService {
     if (deleteFile.documentType === DocumentType.PROJECT) {
       let project = await this.prisma.project.findFirst({
         where: {
-          id: deleteFile.documentId,
+          id: documentId,
           members: {
             some: {
               memberId: userId,
@@ -262,16 +266,38 @@ export class FileUploadService {
       if (!isMember) {
         throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden');
       }
-
-      let projectData = await this.prisma.project.update({
-        data: {
-          attachments: attachment,
-          reports: reports,
-        },
-        where: {
-          id: deleteFile.documentId,
-        },
-      });
+      let projectData: {
+        id: number;
+        name: string;
+        archived: boolean;
+        startDate: Date;
+        endDate: Date;
+        projectPictureId: number;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date;
+        recentActivitesId: number;
+      };
+      if (attachment) {
+        projectData = await this.prisma.project.update({
+          data: {
+            attachments: attachment,
+          },
+          where: {
+            id: documentId,
+          },
+        });
+      }
+      if (reports) {
+        projectData = await this.prisma.project.update({
+          data: {
+            reports: reports,
+          },
+          where: {
+            id: documentId,
+          },
+        });
+      }
       await this.deleteFile(file.imagePath);
       await this.prisma.recentActivites.update({
         data: {
@@ -286,7 +312,7 @@ export class FileUploadService {
     } else {
       let subproject = await this.prisma.subProject.findFirst({
         where: {
-          id: deleteFile.documentId,
+          id: documentId,
           members: {
             some: {
               userId: userId,
@@ -313,7 +339,7 @@ export class FileUploadService {
           reports: reports,
         },
         where: {
-          id: deleteFile.documentId,
+          id: documentId,
         },
         include: {
           project: true,

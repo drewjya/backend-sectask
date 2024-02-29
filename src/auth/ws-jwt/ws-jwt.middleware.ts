@@ -1,14 +1,15 @@
-import { Socket } from 'socket.io';
+import { AuthSocket } from 'src/utls/interface/authsocket.interface';
 import { WsJwtGuard } from './ws-jwt.guard';
 
 type SocketIOMiddleWare = {
-  (client: Socket, next: (err?: Error) => void): void;
+  (client: AuthSocket, next: (err?: Error) => void): void;
 };
 
-export const SocketAuthMiddleware = ():SocketIOMiddleWare => {
-  return (client, next) => {
+export const SocketAuthMiddleware = (): SocketIOMiddleWare => {
+  return async (client, next) => {
     try {
-      WsJwtGuard.validateToken(client);
+      let user = await WsJwtGuard.validateToken(client);
+      client.userId = +user.sub;
       next();
     } catch (error) {
       next(error);

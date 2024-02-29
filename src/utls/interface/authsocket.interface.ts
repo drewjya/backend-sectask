@@ -1,5 +1,5 @@
 import { Socket } from "socket.io";
 
-export interface AuthSocker extends Socket {
+export interface AuthSocket extends Socket {
     userId: number;
  }

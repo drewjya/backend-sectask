@@ -21,8 +21,6 @@ export class AuthFilter extends BaseExceptionFilter {
       error = resp;
     }
 
-    console.log(exception);
-
     const errorResponse = {
       status: status,
       error: error,

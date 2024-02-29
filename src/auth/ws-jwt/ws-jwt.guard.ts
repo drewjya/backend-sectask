@@ -24,14 +24,12 @@ export class WsJwtGuard implements CanActivate {
 
   static validateToken(client: Socket) {
     const { authorization } = client.handshake.headers;
-    console.log(authorization);
 
     if (!authorization) {
       throw new ApiException(HttpStatus.UNAUTHORIZED, 'Unauthorized');
     }
     const token: string = authorization.split(' ')[1];
     const payload = verify(token, process.env.JWT_ACCESS_SECRET);
-    console.log(payload);
 
     return payload;
   }

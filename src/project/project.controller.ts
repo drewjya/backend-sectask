@@ -26,7 +26,7 @@ export class ProjectController {
     let userId = req.user['sub'];
     return this.projectService.active(userId);
   }
-  
+
   @UseGuards(AccessTokenGuard)
   @ApiBearerAuth('access-token')
   @Get('recent_updates')
@@ -67,5 +67,12 @@ export class ProjectController {
     @Query('email') email: string,
   ) {
     return this.projectService.searchMember(email, +projectId);
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get(':projectId')
+  getProject(@Req() req: Request, @Param('projectId') projectId: string) {
+    let userId = req.user['sub'];
+    return this.projectService.getProjectDetailById(+projectId, userId);
   }
 }

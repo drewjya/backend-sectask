@@ -46,9 +46,9 @@ export class FileUploadController {
   remove(
     @Req() req: Request,
     @Body() deleteFile: DeleteFileDto,
-    @Param('fileId') fileId: number,
+    @Param('fileId') fileId: string,
   ) {
     let userId = req.user['sub'];
-    return this.fileService.deleteFileAttachment(userId, fileId, deleteFile);
+    return this.fileService.deleteFileAttachment(userId, +fileId, deleteFile);
   }
 }

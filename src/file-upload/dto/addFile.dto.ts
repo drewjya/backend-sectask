@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsNumber } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumberString } from 'class-validator';
 
 export enum FileType {
   ATTACHMENT = 'ATTACHMENT',
@@ -20,6 +20,6 @@ export class AddFileDto {
   documentType: DocumentType;
 
   @IsNotEmpty()
-  @IsNumber()
+  @IsNumberString()
   documentId: number;
 }

@@ -35,8 +35,8 @@ async function bootstrap() {
       stopAtFirstError: true,
     }),
   );
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.useWebSocketAdapter(new SocketAdapter(app));
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   createSwagger(app);
 

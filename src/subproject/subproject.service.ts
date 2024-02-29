@@ -193,4 +193,40 @@ export class SubprojectService {
     });
     return a;
   }
+
+  async getProjectDetailById(params: { subProjectId: number; userId: number }) {
+    let subProject = await this.prisma.subProject.findFirst({
+      where: {
+        id: params.subProjectId,
+        members: {
+          some: {
+            userId: params.userId,
+          },
+        },
+      },
+      include: {
+        members: {
+          select: {
+            id: true,
+            role: true,
+            user: {
+              select: {
+                name: true,
+                profilePicture: true,
+              },
+            },
+          },
+        },
+        project: true,
+        reports: true,
+        attachments: true,
+      },
+    });
+
+    if (!subProject) {
+      throw new ApiException(404, 'subproject_not_found');
+    }
+    
+    return subProject;
+  }
 }

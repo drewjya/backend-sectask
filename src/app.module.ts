@@ -3,7 +3,6 @@ import { Module } from '@nestjs/common';
 import { AuthController } from './auth/auth.controller';
 import { AuthModule } from './auth/auth.module';
 import { AuthService } from './auth/auth.service';
-import { ChatGateway } from './chat/chat.gateway';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
 
@@ -45,13 +44,6 @@ import { SubprojectModule } from './subproject/subproject.module';
     MessageModule,
   ],
   controllers: [AuthController],
-  providers: [
-    ChatGateway,
-    AuthService,
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: WsJwtGuard,
-    // },
-  ],
+  providers: [AuthService],
 })
 export class AppModule {}

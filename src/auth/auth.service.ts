@@ -131,7 +131,6 @@ export class AuthService {
     const getToken: any = await this.cahceManager.get(
       getRedis().refreshToken(userId),
     );
-    console.log(getToken, 'gettoken');
 
     if (!user) {
       throw new ApiException(HttpStatus.NOT_FOUND, 'user_not_found');
@@ -172,7 +171,6 @@ export class AuthService {
     const getToken: any = await this.cahceManager.get(
       getRedis().accessToken(userId),
     );
-    console.log(getToken, 'gettoken');
 
     if (!getToken) {
       return true;
