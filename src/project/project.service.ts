@@ -436,4 +436,102 @@ export class ProjectService {
     }
     return result;
   }
+  async getProjectDetail(projectId: number) {
+    let project = await this.prisma.project.findUnique({
+      where: {
+        id: projectId,
+      },
+      include: {
+        members: {
+          select: {
+            id: true,
+            memberId: true,
+            role: true,
+            member: {
+              select: {
+                id: true,
+                name: true,
+                profilePicture: true,
+              },
+            },
+          },
+        },
+        projectPicture: true,
+        attachments: true,
+        reports: true,
+        subProjects: true,
+      },
+    });
+    if (project === null) {
+      throw new ApiException(404, 'not_found');
+    }
+    let result = {
+      id: project.id,
+      name: project.name,
+      startDate: project.startDate,
+      endDate: project.endDate,
+      projectPicture: null,
+      members: [],
+      attachments: [],
+      reports: [],
+      subProjects: [],
+    };
+    if (project.projectPicture) {
+      let pict = await this.upload.getFileUrl(
+        project.projectPicture.imagePath,
+        project.projectPicture.contentType,
+      );
+      result.projectPicture = pict;
+    }
+    for (const member of project.members) {
+      let profilePict = null;
+      if (member.member.profilePicture) {
+        let image = await this.upload.getFileUrl(
+          member.member.profilePicture.imagePath,
+          member.member.profilePicture.contentType,
+        );
+        profilePict = image;
+      }
+      result.members.push({
+        userId: member.member.id,
+        memberId: member.id,
+        role: member.role,
+        name: member.member.name,
+        profilePicture: profilePict,
+      });
+    }
+    for (const attachment of project.attachments) {
+      let file = await this.upload.getFileUrl(
+        attachment.imagePath,
+        attachment.contentType,
+      );
+      result.attachments.push({
+        id: attachment.id,
+        name: attachment.name,
+        file: file,
+      });
+    }
+    for (const report of project.reports) {
+      let file = await this.upload.getFileUrl(
+        report.imagePath,
+        report.contentType,
+      );
+      result.reports.push({
+        id: report.id,
+        name: report.name,
+        file: file,
+      });
+    }
+    for (const subProject of project.subProjects) {
+      let subProjectResult = {
+        id: subProject.id,
+        name: subProject.name,
+        startDate: subProject.startDate,
+        endDate: subProject.endDate,
+      };
+
+      result.subProjects.push(subProjectResult);
+    }
+    return result;
+  }
 }

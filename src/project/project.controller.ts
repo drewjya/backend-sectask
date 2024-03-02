@@ -8,16 +8,21 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guards/accesToken.guard';
+import { PROJECT_ON_MESSAGE } from 'src/utls/event';
 import { AddMemberDto } from './dto/addMember.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectService } from './project.service';
 
 @Controller('api/project')
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(
+    private readonly projectService: ProjectService,
+    private emitter: EventEmitter2,
+  ) {}
 
   @UseGuards(AccessTokenGuard)
   @ApiBearerAuth('access-token')
@@ -51,13 +56,22 @@ export class ProjectController {
 
   @UseGuards(AccessTokenGuard)
   @Post(':projectId/member')
-  addMember(
+  async addMember(
     @Req() req: Request,
     @Param('projectId') projectId: string,
     @Body() addMember: AddMemberDto,
   ) {
     const userId = req.user['sub'];
-    return this.projectService.addMember(+projectId, addMember.userId, userId);
+    let member = await this.projectService.addMember(
+      +projectId,
+      addMember.userId,
+      userId,
+    );
+    this.emitter.emit(PROJECT_ON_MESSAGE.ADD_MEMBER, {
+      projectId: +projectId,
+      userId: addMember.userId,
+    });
+    return;
   }
 
   @UseGuards(AccessTokenGuard)

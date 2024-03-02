@@ -11,6 +11,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { redisStore } from 'cache-manager-redis-yet';
 
 // import { WsJwtGuard } from './auth/ws-jwt/ws-jwt.guard';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { EventsModule } from './events/events.module';
 import { FileUploadModule } from './file-upload/file-upload.module';
 import { FindingModule } from './finding/finding.module';
@@ -25,6 +26,7 @@ import { SubprojectModule } from './subproject/subproject.module';
     AuthModule,
     UserModule,
     ProjectModule,
+    EventEmitterModule.forRoot(),
     SubprojectModule,
     FindingModule,
     JwtModule,
