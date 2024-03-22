@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { ProjectRole, SubprojectRole } from '@prisma/client';
 import { FileUploadService } from 'src/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ApiException } from 'src/utls/exception/api.exception';
+import { ApiException } from 'src/utils/exception/api.exception';
 import { CreateProjectDto } from './dto/create-project.dto';
 
 @Injectable()
@@ -283,7 +284,12 @@ export class ProjectService {
     return result;
   }
 
-  async addMember(projectId: number, userId: number, ownerId: number) {
+  async addMember(
+    projectId: number,
+    userId: number,
+    ownerId: number,
+    role: ProjectRole,
+  ) {
     let project = await this.prisma.project.findUnique({
       where: {
         id: projectId,
@@ -307,12 +313,12 @@ export class ProjectService {
     if (isMember) {
       throw new ApiException(400, 'already_member');
     }
-    return this.prisma.project.update({
+    const newMember = await this.prisma.project.update({
       data: {
         members: {
           create: {
             memberId: userId,
-            role: 'VIEWER',
+            role: role,
           },
         },
         recentActivities: {
@@ -331,6 +337,69 @@ export class ProjectService {
         id: projectId,
       },
     });
+    let subProjectRole: SubprojectRole;
+    switch (role) {
+      case ProjectRole.DEVELOPER:
+        subProjectRole = SubprojectRole.DEVELOPER;
+        break;
+      case ProjectRole.TECHNICAL_WRITER:
+        subProjectRole = SubprojectRole.TECHNICAL_WRITER;
+        break;
+      case ProjectRole.VIEWER:
+        subProjectRole = SubprojectRole.GUEST;
+        break;
+
+      default:
+        throw new ApiException(400, 'invalid_role');
+    }
+
+    let subproject = await this.addMemberToSubproject(
+      projectId,
+      userId,
+      subProjectRole,
+    );
+    return {
+      newMember,
+      subproject,
+    };
+  }
+
+  private async addMemberToSubproject(
+    projectId: number,
+    memberId: number,
+    role: SubprojectRole,
+  ) {
+    const subprojects = await this.prisma.subProject.findMany({
+      where: { projectId: projectId },
+    });
+    console.log(subprojects);
+
+    const recentActivites = subprojects.map((subproject) => ({
+      recentActivitiesId: subproject.recentActivitesId,
+      name: subproject.name,
+    }));
+
+    let re = await this.prisma.subprojectMember.createMany({
+      data: subprojects.map((e) => {
+        return {
+          role: role,
+          subprojectId: e.id,
+          userId: memberId,
+        };
+      }),
+    });
+
+    console.log(re);
+
+    for (const iterator of recentActivites) {
+      await this.prisma.recentActivites.update({
+        where: { id: iterator.recentActivitiesId },
+        data: {
+          description: `Member [${memberId}] has been added to SubProject [${iterator.name}]`,
+        },
+      });
+    }
+    return subprojects;
   }
 
   async getProjectDetailById(projectId: number, userId: number) {

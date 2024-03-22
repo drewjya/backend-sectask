@@ -12,7 +12,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guards/accesToken.guard';
-import { PROJECT_ON_MESSAGE } from 'src/utls/event';
+import { PROJECT_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
 import { AddMemberDto } from './dto/addMember.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectService } from './project.service';
@@ -62,15 +62,21 @@ export class ProjectController {
     @Body() addMember: AddMemberDto,
   ) {
     const userId = req.user['sub'];
-    let member = await this.projectService.addMember(
+    let detail = await this.projectService.addMember(
       +projectId,
       addMember.userId,
       userId,
+      addMember.role,
     );
     this.emitter.emit(PROJECT_ON_MESSAGE.ADD_MEMBER, {
       projectId: +projectId,
       userId: addMember.userId,
     });
+    for (const iterator of detail.subproject) {
+      this.emitter.emit(SUBPROJECT_ON_MESSAGE.ADD_MEMBER, {
+        subprojectId: iterator.id,
+      });
+    }
     return;
   }
 

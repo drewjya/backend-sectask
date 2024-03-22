@@ -1,7 +1,7 @@
 import { ArgumentsHost, Catch } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
 import { Response } from 'express';
-import { ApiException } from 'src/utls/exception/api.exception';
+import { ApiException } from 'src/utils/exception/api.exception';
 
 @Catch(ApiException)
 export class AuthFilter extends BaseExceptionFilter {

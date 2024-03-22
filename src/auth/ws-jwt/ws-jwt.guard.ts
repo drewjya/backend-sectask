@@ -7,7 +7,7 @@ import {
 import { verify } from 'jsonwebtoken';
 import { Observable } from 'rxjs';
 import { Socket } from 'socket.io';
-import { ApiException } from 'src/utls/exception/api.exception';
+import { ApiException } from 'src/utils/exception/api.exception';
 
 @Injectable()
 export class WsJwtGuard implements CanActivate {

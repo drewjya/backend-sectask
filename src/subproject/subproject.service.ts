@@ -1,12 +1,17 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { ProjectRole, SubprojectRole } from '@prisma/client';
+import { FileUploadService } from 'src/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ApiException } from 'src/utls/exception/api.exception';
+import { ApiException } from 'src/utils/exception/api.exception';
 import { AddSubMemberDto } from './dto/addSubMemberDto';
 import { CreateSubProjectDto } from './dto/createSubProject.dto';
 
 @Injectable()
 export class SubprojectService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private upload: FileUploadService,
+  ) {}
 
   async createSubProject(
     userId: number,
@@ -28,6 +33,35 @@ export class SubprojectService {
     if (!project) {
       throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden');
     }
+    let projectMembers = await this.prisma.projectMember.findMany({
+      where: {
+        projectId: createSubprojectDto.projectId,
+      },
+      select: {
+        memberId: true,
+        role: true,
+      },
+    });
+
+    console.log(projectMembers);
+
+    let members = [];
+    for (const iterator of projectMembers) {
+      let role: SubprojectRole;
+      if (iterator.role === ProjectRole.OWNER) {
+        role = SubprojectRole.PM;
+      } else if (iterator.role === ProjectRole.DEVELOPER) {
+        role = SubprojectRole.DEVELOPER;
+      } else if (iterator.role === ProjectRole.TECHNICAL_WRITER) {
+        role = SubprojectRole.TECHNICAL_WRITER;
+      } else {
+        role = SubprojectRole.GUEST;
+      }
+      members.push({
+        role: role,
+        userId: iterator.memberId,
+      });
+    }
     let subproject = await this.prisma.subProject.create({
       data: {
         name: createSubprojectDto.name,
@@ -39,7 +73,7 @@ export class SubprojectService {
           },
         },
         members: {
-          create: [{ role: 'PM', userId: userId }],
+          create: members,
         },
         reports: {},
         recentActivities: {
@@ -144,9 +178,7 @@ export class SubprojectService {
     let isMember = subProject.members.some(
       (val) => val.userId === member.userId,
     );
-    if (isMember) {
-      throw new ApiException(400, 'already_member');
-    }
+
     let user = await this.prisma.user.findUnique({
       where: {
         id: member.userId,
@@ -160,9 +192,17 @@ export class SubprojectService {
     let a = await this.prisma.subProject.update({
       data: {
         members: {
-          create: {
-            role: member.role,
-            userId: member.userId,
+          update: {
+            where: {
+              subprojectId_userId: {
+                subprojectId: subProjectId,
+                userId: member.userId,
+              },
+            },
+            data: {
+              role: member.role,
+              userId: member.userId,
+            },
           },
         },
         recentActivities: {
@@ -194,7 +234,7 @@ export class SubprojectService {
     return a;
   }
 
-  async getProjectDetailById(params: { subProjectId: number; userId: number }) {
+  async getSubprojectDetail(params: { subProjectId: number; userId: number }) {
     let subProject = await this.prisma.subProject.findFirst({
       where: {
         id: params.subProjectId,
@@ -211,13 +251,25 @@ export class SubprojectService {
             role: true,
             user: {
               select: {
+                id: true,
                 name: true,
                 profilePicture: true,
               },
             },
           },
         },
-        project: true,
+        findings: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        project: {
+          select: {
+            projectPicture: true,
+            id: true,
+          },
+        },
         reports: true,
         attachments: true,
       },
@@ -226,7 +278,165 @@ export class SubprojectService {
     if (!subProject) {
       throw new ApiException(404, 'subproject_not_found');
     }
-    
-    return subProject;
+    let result = {
+      id: subProject.id,
+      name: subProject.name,
+      startDate: subProject.startDate,
+      endDate: subProject.endDate,
+      findings: subProject.findings,
+      members: [],
+      attachments: [],
+      reports: [],
+      projectPicture: null,
+    };
+
+    if (subProject.project.projectPicture) {
+      let pict = await this.upload.getFileUrl(
+        subProject.project.projectPicture.imagePath,
+        subProject.project.projectPicture.contentType,
+      );
+      result.projectPicture = pict;
+    }
+
+    for (const member of subProject.members) {
+      let profilePict = null;
+      if (member.user.profilePicture) {
+        profilePict = await this.upload.getFileUrl(
+          member.user.profilePicture.imagePath,
+          member.user.profilePicture.contentType,
+        );
+      }
+      result.members.push({
+        userId: member.user.id,
+        memberId: member.id,
+        role: member.role,
+        name: member.user.name,
+        profilePicture: profilePict,
+      });
+    }
+    for (const attachment of subProject.attachments) {
+      let file = await this.upload.getFileUrl(
+        attachment.imagePath,
+        attachment.contentType,
+      );
+      result.attachments.push({
+        id: attachment.id,
+        name: attachment.name,
+        file: file,
+      });
+    }
+    for (const report of subProject.reports) {
+      let file = await this.upload.getFileUrl(
+        report.imagePath,
+        report.contentType,
+      );
+      result.reports.push({
+        id: report.id,
+        name: report.name,
+        file: file,
+      });
+    }
+
+    return result;
+  }
+  async getSubprojectDetailId(subProjectId: number) {
+    let subProject = await this.prisma.subProject.findFirst({
+      where: {
+        id: subProjectId,
+      },
+      include: {
+        members: {
+          select: {
+            id: true,
+            role: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                profilePicture: true,
+              },
+            },
+          },
+        },
+        findings: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        project: {
+          select: {
+            projectPicture: true,
+            id: true,
+          },
+        },
+        reports: true,
+        attachments: true,
+      },
+    });
+
+    if (!subProject) {
+      throw new ApiException(404, 'subproject_not_found');
+    }
+    let result = {
+      id: subProject.id,
+      name: subProject.name,
+      startDate: subProject.startDate,
+      endDate: subProject.endDate,
+      findings: subProject.findings,
+      members: [],
+      attachments: [],
+      reports: [],
+      projectPicture: null,
+    };
+
+    if (subProject.project.projectPicture) {
+      let pict = await this.upload.getFileUrl(
+        subProject.project.projectPicture.imagePath,
+        subProject.project.projectPicture.contentType,
+      );
+      result.projectPicture = pict;
+    }
+
+    for (const member of subProject.members) {
+      let profilePict = null;
+      if (member.user.profilePicture) {
+        profilePict = await this.upload.getFileUrl(
+          member.user.profilePicture.imagePath,
+          member.user.profilePicture.contentType,
+        );
+      }
+      result.members.push({
+        userId: member.user.id,
+        memberId: member.id,
+        role: member.role,
+        name: member.user.name,
+        profilePicture: profilePict,
+      });
+    }
+    for (const attachment of subProject.attachments) {
+      let file = await this.upload.getFileUrl(
+        attachment.imagePath,
+        attachment.contentType,
+      );
+      result.attachments.push({
+        id: attachment.id,
+        name: attachment.name,
+        file: file,
+      });
+    }
+    for (const report of subProject.reports) {
+      let file = await this.upload.getFileUrl(
+        report.imagePath,
+        report.contentType,
+      );
+      result.reports.push({
+        id: report.id,
+        name: report.name,
+        file: file,
+      });
+    }
+
+    return result;
   }
 }

@@ -3,7 +3,7 @@ import { ProjectRole } from '@prisma/client';
 import { BufferedFile } from 'src/minio-client/entity/file.entity';
 import { MinioClientService } from 'src/minio-client/minio-client.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ApiException } from 'src/utls/exception/api.exception';
+import { ApiException } from 'src/utils/exception/api.exception';
 import { AddFileDto, DocumentType, FileType } from './dto/addFile.dto';
 import { DeleteFileDto } from './dto/deleteFile.dto';
 
@@ -178,7 +178,7 @@ export class FileUploadService {
         throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden_subproject');
       }
 
-      let project = await this.prisma.project.update({
+      let project = await this.prisma.subProject.update({
         data: {
           attachments: attachment,
           reports: report,
@@ -189,7 +189,7 @@ export class FileUploadService {
       });
       await this.prisma.recentActivites.update({
         data: {
-          title: `Project ${project.name} Updated`,
+          title: `SubProject ${project.name} Updated`,
           description: `New file has been added to project ${project.name}`,
         },
         where: {

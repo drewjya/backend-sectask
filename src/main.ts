@@ -12,8 +12,8 @@ import {
   Response,
   TransformInterceptor,
 } from './transform/transform.interceptor';
-import { SocketAdapter } from './utls/adapter/socket.adapter';
-import { createSwagger } from './utls/config/swagger.config';
+import { SocketAdapter } from './utils/adapter/socket.adapter';
+import { createSwagger } from './utils/config/swagger.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

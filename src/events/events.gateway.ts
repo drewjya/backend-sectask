@@ -12,18 +12,25 @@ import { Server } from 'socket.io';
 import { SocketAuthMiddleware } from 'src/auth/ws-jwt/ws-jwt.middleware';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ProjectService } from 'src/project/project.service';
+import { SubprojectService } from 'src/subproject/subproject.service';
 import {
   PROJECT_EVENT,
   PROJECT_MESSAGE,
   PROJECT_ON_MESSAGE,
-} from 'src/utls/event';
-import { AuthSocket } from 'src/utls/interface/authsocket.interface';
+  SUBPROJECT_EVENT,
+  SUBPROJECT_MESSAGE,
+  SUBPROJECT_ON_MESSAGE,
+  getProjectRoom,
+  getSubProjectRoom,
+} from 'src/utils/event';
+import { AuthSocket } from 'src/utils/interface/authsocket.interface';
 
 @WebSocketGateway({ namespace: 'events' })
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly prisma: PrismaService,
     private readonly projectService: ProjectService,
+    private readonly subprojectService: SubprojectService,
   ) {}
   private readonly sessions: Map<number, AuthSocket> = new Map();
 
@@ -54,7 +61,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     let val = JSON.parse(data);
 
-    client.join(`project-${val.projectId}`);
+    client.join(getProjectRoom(val.projectId));
   }
 
   @SubscribeMessage(PROJECT_MESSAGE.LEAVE)
@@ -63,11 +70,11 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: any,
   ) {
     let val = JSON.parse(data);
-    client.leave(`project-${val.projectId}`);
+    client.leave(getProjectRoom(val.projectId));
   }
 
   @SubscribeMessage(PROJECT_MESSAGE.ONLINE_MEMBER)
-  async handleMemberOnline(
+  async handleProjectMemberOnline(
     @MessageBody() data: any,
     @ConnectedSocket() socket: AuthSocket,
   ) {
@@ -76,21 +83,15 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     let projectId = val.projectId;
 
     if (!projectId) {
-      // socket.send(PROJECT_EVENT.ONLINE, {
-      //   status: HttpStatus.BAD_REQUEST,
-      //   message: 'invalid_request',
-      //   error: {
-      //     '@root': 'invalid_request',
-      //   },
-      //   data: null,
-      // });
       return;
     }
-    const users = await this.server.in(`project-${projectId}`).fetchSockets();
+    const users = await this.server
+      .in(getProjectRoom(projectId))
+      .fetchSockets();
     const onlineUsers = users.map((user: any) => {
       return user.userId;
     });
-    socket.nsp.to(`project-${projectId}`).emit(PROJECT_EVENT.ONLINE, {
+    socket.nsp.to(getProjectRoom(projectId)).emit(PROJECT_EVENT.ONLINE, {
       onlineMembers: onlineUsers,
     });
   }
@@ -99,8 +100,130 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleAddMember(payload: any) {
     const { projectId } = payload;
     const members = await this.projectService.getProjectDetail(projectId);
-    this.server.in(`project-${projectId}`).emit(PROJECT_EVENT.MEMBER, {
+    this.server.in(getProjectRoom(projectId)).emit(PROJECT_EVENT.MEMBER, {
       members: members.members,
     });
+  }
+
+  @OnEvent(PROJECT_ON_MESSAGE.ADD_SUBPROJECT)
+  async handleAddSubProject(payload: any) {
+    const { projectId } = payload;
+    const subProjects = await this.projectService.getProjectDetail(projectId);
+    this.server.in(getProjectRoom(projectId)).emit(PROJECT_EVENT.SUBPROJECT, {
+      subProjects: subProjects.subProjects,
+    });
+  }
+  @OnEvent(PROJECT_ON_MESSAGE.ADD_REPORT)
+  async handleAddReport(payload: any) {
+    const { projectId } = payload;
+    const project = await this.projectService.getProjectDetail(projectId);
+    this.server.in(getProjectRoom(projectId)).emit(PROJECT_EVENT.REPORT, {
+      reports: project.reports,
+    });
+  }
+  @OnEvent(PROJECT_ON_MESSAGE.ADD_ATTACHMENT)
+  async handleAddAttachment(payload: any) {
+    const { projectId } = payload;
+    console.log(projectId);
+
+    const project = await this.projectService.getProjectDetail(projectId);
+    this.server.in(getProjectRoom(projectId)).emit(PROJECT_EVENT.ATTACHMENT, {
+      attachments: project.attachments,
+    });
+  }
+
+  @SubscribeMessage(SUBPROJECT_MESSAGE.JOIN)
+  onSubProjectJoin(
+    @ConnectedSocket() client: AuthSocket,
+    @MessageBody() data: any,
+  ) {
+    let val = JSON.parse(data);
+
+    client.join(getSubProjectRoom(val.subprojectId));
+  }
+
+  @SubscribeMessage(SUBPROJECT_MESSAGE.LEAVE)
+  onSubProjectLeave(
+    @ConnectedSocket() client: AuthSocket,
+    @MessageBody() data: any,
+  ) {
+    let val = JSON.parse(data);
+    client.leave(getSubProjectRoom(val.subprojectId));
+  }
+
+  @SubscribeMessage(SUBPROJECT_MESSAGE.ONLINE_MEMBER)
+  async handleSubprojectMemberOnline(
+    @MessageBody() data: any,
+    @ConnectedSocket() socket: AuthSocket,
+  ) {
+    const { userId } = socket;
+    let val = JSON.parse(data);
+    let projectId = val.subprojectId;
+
+    if (!projectId) {
+      return;
+    }
+    const users = await this.server
+      .in(getSubProjectRoom(val.subprojectId))
+      .fetchSockets();
+
+    const onlineUsers = users.map((user: any) => {
+      return user.userId;
+    });
+    console.log(onlineUsers);
+    socket.nsp
+      .to(getSubProjectRoom(val.subprojectId))
+      .emit(SUBPROJECT_EVENT.ONLINE, {
+        onlineMembers: onlineUsers,
+      });
+  }
+
+  @OnEvent(SUBPROJECT_ON_MESSAGE.ADD_MEMBER)
+  async handleAddMemberSubProject(payload: any) {
+    const { subprojectId } = payload;
+    const members =
+      await this.subprojectService.getSubprojectDetailId(subprojectId);
+    console.log(members);
+
+    this.server
+      .in(getSubProjectRoom(subprojectId))
+      .emit(SUBPROJECT_EVENT.MEMBER, {
+        members: members.members,
+      });
+  }
+
+  @OnEvent(SUBPROJECT_ON_MESSAGE.ADD_FINDING)
+  async handleAddFinding(payload: any) {
+    const { subprojectId } = payload;
+    const subProjects =
+      await this.subprojectService.getSubprojectDetailId(subprojectId);
+    this.server
+      .in(getSubProjectRoom(subprojectId))
+      .emit(SUBPROJECT_EVENT.FINDING, {
+        findings: subProjects.findings,
+      });
+  }
+  @OnEvent(SUBPROJECT_ON_MESSAGE.ADD_REPORT)
+  async handleAddReportFinding(payload: any) {
+    const { subprojectId } = payload;
+    const project =
+      await this.subprojectService.getSubprojectDetailId(subprojectId);
+    this.server
+      .in(getSubProjectRoom(subprojectId))
+      .emit(SUBPROJECT_EVENT.REPORT, {
+        reports: project.reports,
+      });
+  }
+  @OnEvent(SUBPROJECT_ON_MESSAGE.ADD_ATTACHMENT)
+  async handleAddAttachmentFinding(payload: any) {
+    const { subprojectId } = payload;
+
+    const project =
+      await this.subprojectService.getSubprojectDetailId(subprojectId);
+    this.server
+      .in(getSubProjectRoom(subprojectId))
+      .emit(SUBPROJECT_EVENT.ATTACHMENT, {
+        attachments: project.attachments,
+      });
   }
 }

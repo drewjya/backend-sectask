@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { MinioService } from 'nestjs-minio-client';
-import { ApiException } from 'src/utls/exception/api.exception';
+import { ApiException } from 'src/utils/exception/api.exception';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from './config';
 import { BufferedFile } from './entity/file.entity';

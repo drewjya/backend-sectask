@@ -19,6 +19,7 @@ import { MessageModule } from './message/message.module';
 import { MinioClientModule } from './minio-client/minio-client.module';
 import { ProjectModule } from './project/project.module';
 import { SubprojectModule } from './subproject/subproject.module';
+import { MembersModule } from './members/members.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { SubprojectModule } from './subproject/subproject.module';
     FileUploadModule,
     EventsModule,
     MessageModule,
+    MembersModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

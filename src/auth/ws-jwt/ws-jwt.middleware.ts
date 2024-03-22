@@ -1,4 +1,4 @@
-import { AuthSocket } from 'src/utls/interface/authsocket.interface';
+import { AuthSocket } from 'src/utils/interface/authsocket.interface';
 import { WsJwtGuard } from './ws-jwt.guard';
 
 type SocketIOMiddleWare = {

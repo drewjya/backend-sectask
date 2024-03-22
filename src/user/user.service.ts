@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { FileUploadService } from 'src/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ApiException } from 'src/utls/exception/api.exception';
+import { ApiException } from 'src/utils/exception/api.exception';
 import { EditUserDto } from './dto/editUser.dto';
 
 @Injectable()

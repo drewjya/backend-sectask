@@ -87,6 +87,8 @@ model ProjectMember {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
   deletedAt DateTime?
+
+  @@unique([projectId, memberId])
 }
 
 model SubProject {
@@ -117,12 +119,14 @@ model SubprojectMember {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   deletedAt    DateTime?
+
+  @@unique([subprojectId, userId])
 }
 
 model Finding {
-  id            Int     @id @default(autoincrement())
-  name          String
-  risk          String
+  id   Int    @id @default(autoincrement())
+  name String
+  risk String
 
   description   Block[] @relation("FindingsDescription")
   threatAndRisk Block[] @relation("FindingsThreat")
@@ -135,9 +139,6 @@ model Finding {
   recentActivities  RecentActivites @relation(fields: [recentActivitesId], references: [id])
   recentActivitesId Int
 }
-
-
-
 
 model Block {
   id                   String    @id @default(uuid())

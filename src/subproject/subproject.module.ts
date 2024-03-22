@@ -7,6 +7,7 @@ import { SubprojectService } from './subproject.service';
 @Module({
   controllers: [SubprojectController],
   providers: [SubprojectService],
+  exports: [SubprojectService],
   imports: [PrismaModule, FileUploadModule],
 })
 export class SubprojectModule {}
