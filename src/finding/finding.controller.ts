@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpStatus,
   Param,
   Post,
   Req,
@@ -11,6 +12,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guards/accesToken.guard';
 import { SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
+import { ApiException } from 'src/utils/exception/api.exception';
 import { Action, ActionDescriptionDto } from './dto/actionDescription.dto';
 import { NewFindingDto } from './dto/newFinding.dto';
 import { FindingService } from './finding.service';
@@ -60,8 +62,15 @@ export class FindingController {
         +findingId,
         userId,
       );
+    } else if (description.action === Action.EDIT) {
+      return this.findingService.updateDescription({
+        blockId: description.blockId ?? '',
+        content: description.content,
+        findingId: +findingId,
+        newPreviousBlockId: description.previousBlockId,
+      });
     }
 
-    return 'Hello';
+    throw new ApiException(HttpStatus.BAD_REQUEST, 'Invalid action');
   }
 }

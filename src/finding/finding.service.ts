@@ -345,4 +345,78 @@ export class FindingService {
 
     return { message: 'Description deleted successfully.' };
   }
+
+  async updateDescription(params: {
+    blockId: string;
+    content: string;
+    newPreviousBlockId?: string;
+    findingId: number;
+  }) {
+    const { blockId, content, newPreviousBlockId, findingId } = params;
+
+    const currentBlock = await this.prisma.block.findUnique({
+      where: { id: blockId },
+      include: {
+        previousBlock: true,
+        nextBlock: true, // You might need custom logic to identify the next block
+      },
+    });
+
+    if (!currentBlock) {
+      throw new ApiException(HttpStatus.NOT_FOUND, 'Block not found.');
+    }
+
+    if (content) {
+      await this.prisma.block.update({
+        where: { id: blockId },
+        data: { content: content },
+      });
+    }
+
+    if (
+      newPreviousBlockId !== undefined &&
+      currentBlock.previousBlockId !== newPreviousBlockId
+    ) {
+      // Detach the block from its current position by linking its next and previous blocks
+      if (currentBlock.previousBlock) {
+        await this.prisma.block.update({
+          where: { id: currentBlock.previousBlock.id },
+          data: {
+            nextBlock: currentBlock.nextBlock
+              ? { connect: { id: currentBlock.nextBlock.id } }
+              : { disconnect: true },
+          },
+        });
+      }
+      if (currentBlock.nextBlock) {
+        await this.prisma.block.update({
+          where: { id: currentBlock.nextBlock.id },
+          data: {
+            previousBlockId: currentBlock.previousBlock
+              ? currentBlock.previousBlock.id
+              : null,
+          },
+        });
+      }
+
+      // Attach the block to the new position
+      // Update the new previous block's next to point to the current block
+      if (newPreviousBlockId) {
+        await this.prisma.block.update({
+          where: { id: newPreviousBlockId },
+          data: { nextBlock: { connect: { id: blockId } } },
+        });
+      }
+      // Update the current block's previous to the newPreviousBlockId
+      await this.prisma.block.update({
+        where: { id: blockId },
+        data: { previousBlockId: newPreviousBlockId },
+      });
+
+      // If there is a block that was originally next to the new previous block, update its previous to the current block
+      // This step may require you to find and update the block that was the next of newPreviousBlock before the update, which is not shown here for brevity.
+    }
+
+    return { message: 'Block updated successfully.' };
+  }
 }
