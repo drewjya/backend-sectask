@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { AccessTokenGuard } from 'src/common/guards/accesToken.guard';
 import { SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
 import { ApiException } from 'src/utils/exception/api.exception';
 import { Action, ActionDescriptionDto } from './dto/actionDescription.dto';
+import { EditFindingDto } from './dto/editFinding.dto';
 import { NewFindingDto } from './dto/newFinding.dto';
 import { FindingService } from './finding.service';
 
@@ -42,35 +44,55 @@ export class FindingController {
   }
 
   @UseGuards(AccessTokenGuard)
-  @Post(':findingId/description')
-  insertDescription(
+  @Post(':findingId/content')
+  contentEditor(
     @Req() req: Request,
     @Param('findingId') findingId: string,
     @Body() description: ActionDescriptionDto,
   ) {
     let userId = req.user['sub'];
     if (description.action === Action.ADD) {
-      return this.findingService.insertDescription(
-        +findingId,
-        userId,
-        description.content,
-        description.previousBlockId,
-      );
+      return this.findingService.insertContent({
+        findingId: +findingId,
+        memberId: userId,
+        content: description.content,
+        previousBlockId: description.previousBlockId,
+        contentType: description.contentType,
+      });
     } else if (description.action === Action.DELETE) {
-      return this.findingService.deleteDescription(
-        description.blockId,
-        +findingId,
-        userId,
-      );
+      return this.findingService.deleteDescription({
+        blockId: description.blockId,
+        findingId: +findingId,
+        memberId: userId,
+        contentType: description.contentType,
+      });
     } else if (description.action === Action.EDIT) {
       return this.findingService.updateDescription({
         blockId: description.blockId ?? '',
         content: description.content,
+        userId: userId,
         findingId: +findingId,
         newPreviousBlockId: description.previousBlockId,
+        contentType: description.contentType,
       });
     }
 
     throw new ApiException(HttpStatus.BAD_REQUEST, 'Invalid action');
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Put(':findingId')
+  async updateFinding(
+    @Req() req: Request,
+    @Param('findingId') findingId: string,
+    @Body() newFinding: EditFindingDto,
+  ) {
+    const userId = req.user['sub'];
+    return this.findingService.editFinding({
+      finding: +findingId,
+      memberId: userId,
+      name: newFinding.name,
+      risk: newFinding.risk,
+    });
   }
 }

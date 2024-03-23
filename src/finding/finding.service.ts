@@ -2,6 +2,12 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { FileUploadService } from 'src/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
+import {
+  BlockContentType,
+  conditionDelete,
+  getDataAdd,
+  getIncludeAndConditionAdd,
+} from './dto/actionDescription.dto';
 import { NewFindingDto } from './dto/newFinding.dto';
 
 @Injectable()
@@ -10,6 +16,36 @@ export class FindingService {
     private readonly prisma: PrismaService,
     private readonly fileUpload: FileUploadService,
   ) {}
+  INFO = {
+    include: {
+      nextBlock: {
+        select: {
+          id: true,
+        },
+      },
+    },
+  };
+
+  async findFindingById(params: { findingId: number; userId: number }) {
+    const { findingId, userId } = params;
+    const finding = await this.prisma.finding.findUnique({
+      where: {
+        id: findingId,
+        subProject: {
+          members: {
+            some: {
+              userId: userId,
+              role: 'CONSULTANT',
+            },
+          },
+        },
+      },
+    });
+
+    if (!finding) {
+      throw new ApiException(HttpStatus.FORBIDDEN, 'Forbidden');
+    }
+  }
 
   async create(memberId: number, newFindingDto: NewFindingDto) {
     const subprojectFind = await this.prisma.subProject.findUnique({
@@ -98,90 +134,69 @@ export class FindingService {
         },
       },
       include: {
-        description: {
-          include: {
-            nextBlock: {
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
-        impact: {
-          include: {
-            nextBlock: {
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
+        description: this.INFO,
+        impact: this.INFO,
         recentActivities: true,
-        recomendation: {
-          include: {
-            nextBlock: {
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
-        retestResult: {
-          include: {
-            nextBlock: {
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
+        recomendation: this.INFO,
+        retestResult: this.INFO,
         subProject: {
           select: {
             id: true,
             projectId: true,
           },
         },
-        threatAndRisk: {
-          include: {
-            nextBlock: {
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
+        threatAndRisk: this.INFO,
       },
     });
     return finding;
   }
 
-  async insertDescription(
-    findingId: number,
-    memberId: number,
-    content: string,
-    previousBlockId?: string,
-  ) {
-    const finding = await this.prisma.finding.findUnique({
-      where: {
-        id: findingId,
-      },
-      include: {
-        subProject: {
-          include: {
-            members: true,
+  async editFinding(params: {
+    memberId: number;
+    finding: number;
+    risk?: string;
+    name?: string;
+  }) {
+    const { finding, memberId, name, risk } = params;
+    if (name || risk) {
+      let field = {};
+      if (name) {
+        field['name'] = name;
+      }
+      if (risk) {
+        field['risk'] = risk;
+      }
+      console.log(field);
+
+      await this.findFindingById({ findingId: finding, userId: memberId });
+      const updatedFinding = await this.prisma.finding.update({
+        where: {
+          id: finding,
+          subProject: {
+            members: {
+              some: {
+                userId: memberId,
+                role: 'CONSULTANT',
+              },
+            },
           },
         },
-      },
-    });
-
-    if (
-      !finding ||
-      !finding.subProject.members.some(
-        (member) => member.userId === memberId && member.role === 'CONSULTANT',
-      )
-    ) {
-      throw new ApiException(HttpStatus.FORBIDDEN, 'Forbidden');
+        data: field,
+      });
+      return updatedFinding;
     }
+  }
+
+  async insertContent(params: {
+    findingId: number;
+    memberId: number;
+    content: string;
+    contentType: BlockContentType;
+    previousBlockId?: string;
+  }) {
+    const { findingId, memberId, content, previousBlockId, contentType } =
+      params;
+    await this.findFindingById({ findingId, userId: memberId });
     let oldBlock: {
       nextBlock: {
         id: string;
@@ -190,14 +205,6 @@ export class FindingService {
         createdAt: Date;
         updatedAt: Date;
       };
-
-      findingDescriptions: {
-        id: number;
-        name: string;
-        risk: string;
-        subProjectId: number;
-        recentActivitesId: number;
-      }[];
     } & {
       id: string;
       content: string;
@@ -205,22 +212,17 @@ export class FindingService {
       createdAt: Date;
       updatedAt: Date;
     } = null;
+
+    let { condition, include } = getIncludeAndConditionAdd({
+      contentType: contentType,
+      findingId: findingId,
+    });
+
     if (previousBlockId) {
+      condition.id = previousBlockId;
       oldBlock = await this.prisma.block.findUnique({
-        where: {
-          id: previousBlockId,
-          AND: {
-            findingDescriptions: {
-              some: {
-                id: findingId,
-              },
-            },
-          },
-        },
-        include: {
-          findingDescriptions: true,
-          nextBlock: true,
-        },
+        where: condition,
+        include: include,
       });
 
       if (!oldBlock) {
@@ -230,45 +232,32 @@ export class FindingService {
         );
       }
     } else {
+      let newCond = {
+        previousBlockId: null,
+        ...condition,
+      };
+
       oldBlock = await this.prisma.block.findFirst({
-        where: {
-          findingDescriptions: {
-            some: {
-              id: findingId,
-            },
-          },
-          AND: {
-            previousBlockId: null,
-          },
-        },
-        include: {
-          findingDescriptions: true,
-          nextBlock: true,
-        },
+        where: newCond,
+        include: include,
         orderBy: {
           createdAt: 'desc',
         },
       });
     }
 
-    console.log(oldBlock);
-
+    let data: any = getDataAdd({
+      blockId: oldBlock?.id,
+      content: content,
+      contentType: contentType,
+      findingId: findingId,
+    });
     // Create the new description block
     const description = await this.prisma.block.create({
-      data: {
-        content: content,
-        findingDescriptions: {
-          connect: { id: findingId },
-        },
-        previousBlock: {
-          connect: {
-            id: oldBlock.id,
-          },
-        },
-      },
+      data: data,
     });
 
-    if (oldBlock.nextBlock) {
+    if (oldBlock && oldBlock.nextBlock) {
       await this.prisma.block.update({
         where: {
           id: oldBlock.nextBlock.id,
@@ -285,35 +274,24 @@ export class FindingService {
     return description;
   }
 
-  async deleteDescription(
-    blockId: string,
-    findingId: number,
-    memberId: number,
-  ) {
-    const permission = await this.prisma.finding.findFirst({
-      where: {
-        id: findingId,
-        subProject: {
-          members: {
-            some: {
-              userId: memberId,
-              role: 'CONSULTANT',
-            },
-          },
-        },
-      },
-      include: {},
+  async deleteDescription(params: {
+    blockId: string;
+    findingId: number;
+    memberId: number;
+    contentType: BlockContentType;
+  }) {
+    const { blockId, findingId, memberId, contentType } = params;
+    await this.findFindingById({ findingId, userId: memberId });
+    let condition = conditionDelete({
+      contentType: contentType,
+      findingId: findingId,
     });
 
-    if (!permission) {
-      throw new ApiException(
-        HttpStatus.FORBIDDEN,
-        'Forbidden: You do not have permission to perform this action.',
-      );
-    }
-
     const blockToDelete = await this.prisma.block.findFirst({
-      where: { id: blockId },
+      where: {
+        id: blockId,
+        AND: condition,
+      },
       include: {
         previousBlock: true,
         nextBlock: true, // Assuming you manage to infer nextBlock through some logic or structure
@@ -349,13 +327,27 @@ export class FindingService {
   async updateDescription(params: {
     blockId: string;
     content: string;
+    userId: number;
     newPreviousBlockId?: string;
     findingId: number;
+    contentType: BlockContentType;
   }) {
-    const { blockId, content, newPreviousBlockId, findingId } = params;
+    const {
+      blockId,
+      content,
+      newPreviousBlockId,
+      findingId,
+      contentType,
+      userId,
+    } = params;
+    await this.findFindingById({ findingId, userId });
+    let condition = conditionDelete({
+      contentType: contentType,
+      findingId: findingId,
+    });
 
     const currentBlock = await this.prisma.block.findUnique({
-      where: { id: blockId },
+      where: { id: blockId, AND: condition },
       include: {
         previousBlock: true,
         nextBlock: true, // You might need custom logic to identify the next block
