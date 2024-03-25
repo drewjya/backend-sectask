@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 
-import { AuthController } from './auth/auth.controller';
-import { AuthModule } from './auth/auth.module';
-import { AuthService } from './auth/auth.service';
+import { AuthController } from './module/auth/auth.controller';
+import { AuthModule } from './module/auth/auth.module';
+import { AuthService } from './module/auth/auth.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
 
@@ -12,14 +12,14 @@ import { redisStore } from 'cache-manager-redis-yet';
 
 // import { WsJwtGuard } from './auth/ws-jwt/ws-jwt.guard';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { EventsModule } from './events/events.module';
-import { FileUploadModule } from './file-upload/file-upload.module';
-import { FindingModule } from './finding/finding.module';
-import { MessageModule } from './message/message.module';
-import { MinioClientModule } from './minio-client/minio-client.module';
-import { ProjectModule } from './project/project.module';
-import { SubprojectModule } from './subproject/subproject.module';
-import { MembersModule } from './members/members.module';
+import { EventsModule } from './module/events/events.module';
+import { FindingModule } from './module/finding/finding.module';
+
+
+import { FileUploadModule } from './module/file-upload/file-upload.module';
+import { ProjectModule } from './module/project/project.module';
+import { SubprojectModule } from './module/subproject/subproject.module';
+import { MinioClientModule } from './module/minio-client/minio-client.module';
 
 @Module({
   imports: [
@@ -44,8 +44,6 @@ import { MembersModule } from './members/members.module';
     MinioClientModule,
     FileUploadModule,
     EventsModule,
-    MessageModule,
-    MembersModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

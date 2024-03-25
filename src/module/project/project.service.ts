@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ProjectRole, SubprojectRole } from '@prisma/client';
-import { FileUploadService } from 'src/file-upload/file-upload.service';
+import { FileUploadService } from 'src/module/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
 import { CreateProjectDto } from './dto/create-project.dto';

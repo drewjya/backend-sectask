@@ -9,10 +9,10 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
-import { SocketAuthMiddleware } from 'src/auth/ws-jwt/ws-jwt.middleware';
+import { SocketAuthMiddleware } from 'src/module/auth/ws-jwt/ws-jwt.middleware';
+import { ProjectService } from 'src/module/project/project.service';
+import { SubprojectService } from 'src/module/subproject/subproject.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ProjectService } from 'src/project/project.service';
-import { SubprojectService } from 'src/subproject/subproject.service';
 import {
   PROJECT_EVENT,
   PROJECT_MESSAGE,

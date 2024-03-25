@@ -24,7 +24,7 @@ export const getIncludeAndConditionAdd = (params: {
   let include = {
     nextBlock: true,
     findingDescriptions: false,
-    findingImpact: false,
+    findingBusinessImpact: false,
     findingRecomendation: false,
     findingRetestResult: false,
     findingThreatAndRisk: false,
@@ -59,14 +59,14 @@ export const getIncludeAndConditionAdd = (params: {
     case BlockContentType.IMPACT:
       condition = {
         AND: {
-          findingImpact: {
+          findingBusinessImpact: {
             some: {
               id: findingId,
             },
           },
         },
       };
-      include.findingImpact = true;
+      include.findingBusinessImpact = true;
       break;
 
     case BlockContentType.RECOMMENDATION:
@@ -129,7 +129,7 @@ export const getDataAdd = (params: {
       break;
 
     case BlockContentType.IMPACT:
-      data.findingImpact = {
+      data.findingBusinessImpact = {
         connect: { id: findingId },
       };
       break;
@@ -168,7 +168,7 @@ export const conditionDelete = (params: {
       break;
     case BlockContentType.IMPACT:
       data = {
-        findingImpact: {
+        findingBusinessImpact: {
           some: {
             id: findingId,
           },

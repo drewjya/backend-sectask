@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ProjectRole } from '@prisma/client';
-import { BufferedFile } from 'src/minio-client/entity/file.entity';
-import { MinioClientService } from 'src/minio-client/minio-client.service';
+import { BufferedFile } from 'src/module/minio-client/entity/file.entity';
+import { MinioClientService } from 'src/module/minio-client/minio-client.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
 import { AddFileDto, DocumentType, FileType } from './dto/addFile.dto';

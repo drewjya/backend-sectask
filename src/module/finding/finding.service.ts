@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { FileUploadService } from 'src/file-upload/file-upload.service';
+import { FileUploadService } from 'src/module/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
 import {
@@ -76,6 +76,8 @@ export class FindingService {
         },
         name: 'Untitled',
         risk: '',
+        findingDate: new Date(),
+
         recentActivities: {
           create: {
             title: 'New Finding Created',
@@ -135,7 +137,7 @@ export class FindingService {
       },
       include: {
         description: this.INFO,
-        impact: this.INFO,
+        businessImpact: this.INFO,
         recentActivities: true,
         recomendation: this.INFO,
         retestResult: this.INFO,

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { MinioClientModule } from 'src/minio-client/minio-client.module';
+import { MinioClientModule } from 'src/module/minio-client/minio-client.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { FileUploadController } from './file-upload.controller';
 import { FileUploadService } from './file-upload.service';

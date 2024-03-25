@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { AuthFilter } from './auth/auth.filter';
+import { AuthFilter } from './module/auth/auth.filter';
 import { PrismaClientExceptionFilter } from './prisma/prisma.filter';
 import {
   Response,
