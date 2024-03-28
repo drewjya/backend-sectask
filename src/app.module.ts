@@ -15,11 +15,11 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { EventsModule } from './module/events/events.module';
 import { FindingModule } from './module/finding/finding.module';
 
-
 import { FileUploadModule } from './module/file-upload/file-upload.module';
-import { ProjectModule } from './module/project/project.module';
-import { SubprojectModule } from './module/subproject/subproject.module';
 import { MinioClientModule } from './module/minio-client/minio-client.module';
+import { ProjectModule } from './module/project/project.module';
+import { RepositoryModule } from './module/repository/repository.module';
+import { SubprojectModule } from './module/subproject/subproject.module';
 
 @Module({
   imports: [
@@ -44,6 +44,7 @@ import { MinioClientModule } from './module/minio-client/minio-client.module';
     MinioClientModule,
     FileUploadModule,
     EventsModule,
+    RepositoryModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

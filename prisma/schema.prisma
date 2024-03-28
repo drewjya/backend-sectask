@@ -44,7 +44,7 @@ model File {
   project               Project[]
 }
 
-model RecentActivites {
+model RecentActivities {
   id          Int       @id @default(autoincrement())
   title       String
   description String
@@ -52,9 +52,9 @@ model RecentActivites {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  Project    Project[]
-  SubProject SubProject[]
-  Finding    Finding[]
+  project    Project[]
+  subProject SubProject[]
+  finding    Finding[]
 }
 
 model Project {
@@ -73,8 +73,8 @@ model Project {
   deletedAt        DateTime?
 
   subProjects       SubProject[]
-  recentActivities  RecentActivites @relation(fields: [recentActivitesId], references: [id])
-  recentActivitesId Int
+  recentActivities  RecentActivities @relation(fields: [recentActivitiesId], references: [id])
+  recentActivitiesId Int
 }
 
 model ProjectMember {
@@ -103,8 +103,8 @@ model SubProject {
   findings          Finding[]
   attachments       File[]             @relation("SubProjectAttachments")
   reports           File[]             @relation("SubProjectReports")
-  recentActivities  RecentActivites    @relation(fields: [recentActivitesId], references: [id])
-  recentActivitesId Int
+  recentActivities  RecentActivities    @relation(fields: [recentActivitiesId], references: [id])
+  recentActivitiesId Int
   project           Project            @relation(fields: [projectId], references: [id])
   projectId         Int
 }
@@ -143,8 +143,8 @@ model Finding {
 
   subProject        SubProject      @relation(fields: [subProjectId], references: [id])
   subProjectId      Int
-  recentActivities  RecentActivites @relation(fields: [recentActivitesId], references: [id])
-  recentActivitesId Int
+  recentActivities  RecentActivities @relation(fields: [recentActivitiesId], references: [id])
+  recentActivitiesId Int
 }
 
 model Block {

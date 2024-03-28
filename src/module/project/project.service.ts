@@ -3,6 +3,7 @@ import { ProjectRole, SubprojectRole } from '@prisma/client';
 import { FileUploadService } from 'src/module/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
+import { RecentActivitiesRepository } from '../repository/repo/recent_activities.repository';
 import { CreateProjectDto } from './dto/create-project.dto';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class ProjectService {
   constructor(
     private prisma: PrismaService,
     private upload: FileUploadService,
+    private recentActivities: RecentActivitiesRepository,
   ) {}
   async create(userId: number, createProjectDto: CreateProjectDto) {
     let project = await this.prisma.project.create({
@@ -75,135 +77,14 @@ export class ProjectService {
   async findRecentUpdatesByUserId(userId: number) {
     try {
       // Find recent updates for projects
-      type RecentUpdates = {
-        id: number;
-        documentId: number;
-        type: string;
-        title: string;
-        description: string;
-        createdAt: Date;
-        updatedAt: Date;
-        projectPicture?: string;
-      };
-      let projectUpdates: Record<number, RecentUpdates> = {};
-      const projects = await this.prisma.project.findMany({
-        where: {
-          members: {
-            some: {
-              memberId: userId,
-            },
-          },
-        },
-        include: {
-          members: true,
-          recentActivities: true,
-          projectPicture: true,
-        },
+
+      let recentUpdates = await this.recentActivities.findMany({
+        userId: userId,
       });
-      for (const key of projects) {
-        let curr = {
-          id: key.recentActivitesId,
-          documentId: key.id,
-          type: 'PROJECT',
-          title: key.recentActivities.title,
-          description: key.recentActivities.description,
-          createdAt: key.recentActivities.createdAt,
-          updatedAt: key.recentActivities.updatedAt,
-          projectPicture: null,
-        };
-        if (key.projectPicture) {
-          let pict = await this.upload.getFileUrl(
-            key.projectPicture.imagePath,
-            key.projectPicture.contentType,
-          );
-          curr.projectPicture = pict;
-        }
-        projectUpdates[key.id] = curr;
-      }
-
-      // Find recent updates for subprojects
-      let subprojectUpdates: Record<number, RecentUpdates> = {};
-      const subprojects = await this.prisma.subProject.findMany({
-        where: {
-          members: {
-            some: {
-              userId: userId,
-            },
-          },
-        },
-        include: {
-          members: true,
-
-          recentActivities: true,
-        },
-      });
-
-      for (const key of subprojects) {
-        let curr = {
-          id: key.recentActivitesId,
-          documentId: key.id,
-          type: 'SUBPROJECT',
-          title: key.recentActivities.title,
-          description: key.recentActivities.description,
-          createdAt: key.recentActivities.createdAt,
-          updatedAt: key.recentActivities.updatedAt,
-          projectPicture: null,
-        };
-        let projectRoot = projectUpdates[key.projectId];
-        if (projectRoot) {
-          curr.projectPicture = projectRoot.projectPicture;
-        }
-        subprojectUpdates[key.id] = curr;
-      }
-      // Find recent updates for findings
-      let findingUpdates: Record<number, RecentUpdates> = {};
-      const findings = await this.prisma.finding.findMany({
-        where: {
-          subProject: {
-            members: {
-              some: {
-                userId: userId,
-              },
-            },
-          },
-        },
-        include: {
-          subProject: {
-            include: {
-              members: true,
-            },
-          },
-          recentActivities: true,
-        },
-      });
-      for (const key of findings) {
-        let curr = {
-          id: key.recentActivitesId,
-          documentId: key.id,
-          type: 'FINDINGS',
-          title: key.recentActivities.title,
-          description: key.recentActivities.description,
-          createdAt: key.recentActivities.createdAt,
-          updatedAt: key.recentActivities.updatedAt,
-          projectPicture: null,
-        };
-        let subprojectRoot = subprojectUpdates[key.subProjectId];
-        if (subprojectRoot) {
-          curr.projectPicture = subprojectRoot.projectPicture;
-        }
-        findingUpdates[key.id] = curr;
-      }
-
-      // Combine and return the results
-      let recentUpdates = [
-        ...Object.values(projectUpdates),
-        ...Object.values(subprojectUpdates),
-        ...Object.values(findingUpdates),
-      ];
-
       recentUpdates.sort(
         (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
       );
+
       return recentUpdates;
     } catch (error) {
       throw error;
@@ -374,8 +255,8 @@ export class ProjectService {
     });
     console.log(subprojects);
 
-    const recentActivites = subprojects.map((subproject) => ({
-      recentActivitiesId: subproject.recentActivitesId,
+    const recentActivities = subprojects.map((subproject) => ({
+      recentActivitiesId: subproject.recentActivitiesId,
       name: subproject.name,
     }));
 
@@ -391,8 +272,8 @@ export class ProjectService {
 
     console.log(re);
 
-    for (const iterator of recentActivites) {
-      await this.prisma.recentActivites.update({
+    for (const iterator of recentActivities) {
+      await this.prisma.recentActivities.update({
         where: { id: iterator.recentActivitiesId },
         data: {
           description: `Member [${memberId}] has been added to SubProject [${iterator.name}]`,

@@ -143,13 +143,13 @@ export class FileUploadService {
           id: documentId,
         },
       });
-      await this.prisma.recentActivites.update({
+      await this.prisma.recentActivities.update({
         data: {
           title: `Project ${project.name} Updated`,
           description: `New file has been added to project ${project.name}`,
         },
         where: {
-          id: project.recentActivitesId,
+          id: project.recentActivitiesId,
         },
       });
       return project;
@@ -187,13 +187,13 @@ export class FileUploadService {
           id: documentId,
         },
       });
-      await this.prisma.recentActivites.update({
+      await this.prisma.recentActivities.update({
         data: {
           title: `SubProject ${project.name} Updated`,
           description: `New file has been added to project ${project.name}`,
         },
         where: {
-          id: project.recentActivitesId,
+          id: project.recentActivitiesId,
         },
       });
       return project;
@@ -276,7 +276,7 @@ export class FileUploadService {
         createdAt: Date;
         updatedAt: Date;
         deletedAt: Date;
-        recentActivitesId: number;
+        recentActivitiesId: number;
       };
       if (attachment) {
         projectData = await this.prisma.project.update({
@@ -299,13 +299,13 @@ export class FileUploadService {
         });
       }
       await this.deleteFile(file.imagePath);
-      await this.prisma.recentActivites.update({
+      await this.prisma.recentActivities.update({
         data: {
           title: `Project ${projectData.name} Updated`,
           description: `${deleteFile.type} has been deleted from project ${projectData.name}`,
         },
         where: {
-          id: projectData.recentActivitesId,
+          id: projectData.recentActivitiesId,
         },
       });
       return projectData;
@@ -348,22 +348,22 @@ export class FileUploadService {
       await this.deleteFile(file.imagePath);
 
       await this.prisma.$transaction([
-        this.prisma.recentActivites.update({
+        this.prisma.recentActivities.update({
           data: {
             title: `Project ${projectData.project.name} Updated`,
             description: `${deleteFile.type} has been deleted from project ${projectData.project.name}`,
           },
           where: {
-            id: projectData.project.recentActivitesId,
+            id: projectData.project.recentActivitiesId,
           },
         }),
-        this.prisma.recentActivites.update({
+        this.prisma.recentActivities.update({
           data: {
             title: `SubProject ${projectData.name} Updated`,
             description: `${deleteFile.type} has been deleted from subproject ${projectData.name}`,
           },
           where: {
-            id: projectData.recentActivitesId,
+            id: projectData.recentActivitiesId,
           },
         }),
       ]);

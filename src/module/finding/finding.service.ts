@@ -98,22 +98,22 @@ export class FindingService {
     });
 
     await Promise.all([
-      this.prisma.recentActivites.update({
+      this.prisma.recentActivities.update({
         data: {
           title: 'Finding Created',
           description: `Finding created in subproject ${subprojectFind.name}`,
         },
         where: {
-          id: subprojectFind.recentActivitesId,
+          id: subprojectFind.recentActivitiesId,
         },
       }),
-      this.prisma.recentActivites.update({
+      this.prisma.recentActivities.update({
         data: {
           title: 'Finding Created',
           description: `Finding created in project ${project.name}`,
         },
         where: {
-          id: project.recentActivitesId,
+          id: project.recentActivitiesId,
         },
       }),
     ]);

@@ -85,13 +85,13 @@ export class SubprojectService {
       },
     });
 
-    await this.prisma.recentActivites.update({
+    await this.prisma.recentActivities.update({
       data: {
         title: `SubProject [${createSubprojectDto.name}] Created`,
         description: `SubProject [${createSubprojectDto.name}] has been created by [${userId}]`,
       },
       where: {
-        id: subproject.recentActivitesId,
+        id: subproject.recentActivitiesId,
       },
     });
 
@@ -222,13 +222,13 @@ export class SubprojectService {
       },
     });
 
-    await this.prisma.recentActivites.update({
+    await this.prisma.recentActivities.update({
       data: {
         title: `Project ${subProject.project.name} Updated`,
         description: `Member [${user.name}] has been added to SubProject [${subProject.name}]`,
       },
       where: {
-        id: subProject.project.recentActivitesId,
+        id: subProject.project.recentActivitiesId,
       },
     });
     return a;
