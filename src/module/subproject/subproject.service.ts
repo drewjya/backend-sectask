@@ -22,7 +22,7 @@ export class SubprojectService {
         id: createSubprojectDto.projectId,
         members: {
           some: {
-            id: userId,
+            memberId: userId,
             role: {
               equals: 'OWNER',
             },
@@ -30,7 +30,12 @@ export class SubprojectService {
         },
       },
     });
+
+    console.log(userId, 'USER ID');
+
     if (!project) {
+      console.log(project, 'FORBIDDEN');
+
       throw new ApiException(HttpStatus.FORBIDDEN, 'forbidden');
     }
     let projectMembers = await this.prisma.projectMember.findMany({

@@ -13,9 +13,6 @@ export class PrismaService
     });
   }
   async onModuleInit() {
-    this.$on('query', (e) => {
-      this.logger.log(e.query);
-    });
     await this.$connect();
   }
 }

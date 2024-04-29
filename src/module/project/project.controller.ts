@@ -61,6 +61,8 @@ export class ProjectController {
     @Param('projectId') projectId: string,
     @Body() addMember: AddMemberDto,
   ) {
+    console.log(addMember);
+
     const userId = req.user['sub'];
     let detail = await this.projectService.addMember(
       +projectId,

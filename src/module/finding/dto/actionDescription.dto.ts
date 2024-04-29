@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { BlockType } from '@prisma/client';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export enum Action {
@@ -97,6 +98,18 @@ export const getIncludeAndConditionAdd = (params: {
   }
 
   return { condition, include };
+};
+
+export type FetchOldBlock = {
+  nextBlock: {
+    id: string;
+  };
+  id: string;
+  content: string;
+  type: BlockType;
+  fileId?: number;
+  isChecked: boolean;
+  previousBlockId?: string;
 };
 
 export const getDataAdd = (params: {

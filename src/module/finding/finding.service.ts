@@ -1,10 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { BlockType, Prisma } from '@prisma/client';
 import { FileUploadService } from 'src/module/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
 import {
   BlockContentType,
   conditionDelete,
+  FetchOldBlock,
   getDataAdd,
   getIncludeAndConditionAdd,
 } from './dto/actionDescription.dto';
@@ -412,5 +414,318 @@ export class FindingService {
     }
 
     return { message: 'Block updated successfully.' };
+  }
+
+  async createContent(param: {
+    findingId: number;
+    userId: number;
+    blockType: BlockType;
+    content: string;
+    contentType: BlockContentType;
+    previousBlockId?: string;
+  }) {
+    const {
+      findingId,
+      userId,
+      blockType,
+      contentType,
+      previousBlockId,
+      content,
+    } = param;
+    await this.findFindingById({ findingId, userId: userId });
+
+    const oldBlock = await this.getOldBlock({
+      contentType: contentType,
+      previousBlockId: previousBlockId,
+      findingId: findingId,
+    });
+
+    const createdBlock = await this.createBlock({
+      previousBlockId: oldBlock?.id,
+      content: '',
+      contentType: contentType,
+      blockType: blockType,
+      findingId: findingId,
+    });
+    if (oldBlock && oldBlock.nextBlock) {
+      await this.prisma.block.update({
+        where: {
+          id: oldBlock.nextBlock.id,
+        },
+        data: {
+          previousBlock: {
+            connect: {
+              id: createdBlock.id,
+            },
+          },
+        },
+      });
+    }
+    return createdBlock;
+  }
+
+  async createBlock(params: {
+    previousBlockId?: string;
+    content: string;
+    blockType: BlockType;
+    contentType: BlockContentType;
+    findingId: number;
+  }) {
+    const { previousBlockId, content, contentType, findingId, blockType } =
+      params;
+    let data: Prisma.BlockCreateInput = {};
+    let connect = {
+      connect: { id: findingId },
+    };
+
+    if (previousBlockId) {
+      data.previousBlock = {
+        connect: { id: previousBlockId },
+      };
+    }
+
+    switch (contentType) {
+      case BlockContentType.DESCRIPTION:
+        data.findingDescriptions = connect;
+        break;
+
+      case BlockContentType.THREAT:
+        data.findingThreatAndRisk = connect;
+        break;
+
+      case BlockContentType.IMPACT:
+        data.findingBusinessImpact = connect;
+        break;
+
+      case BlockContentType.RECOMMENDATION:
+        data.findingRecomendation = connect;
+        break;
+
+      case BlockContentType.RETEST:
+        data.findingRetestResult = connect;
+        break;
+    }
+
+    // Create the new description block
+    const blockCreated = await this.prisma.block.create({
+      data: {
+        content: content,
+        type: blockType,
+        ...data,
+      },
+    });
+    return blockCreated;
+  }
+
+  async getOldBlock(params: {
+    contentType: BlockContentType;
+    previousBlockId?: string;
+    findingId: number;
+  }) {
+    const { contentType, previousBlockId, findingId } = params;
+    const condition = {
+      some: {
+        id: findingId,
+      },
+    };
+    let oldBlock: FetchOldBlock;
+    switch (contentType) {
+      case BlockContentType.DESCRIPTION:
+        if (previousBlockId) {
+          oldBlock = await this.prisma.block.findUnique({
+            where: {
+              id: previousBlockId,
+              AND: {
+                findingDescriptions: condition,
+              },
+            },
+            include: {
+              nextBlock: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          });
+          if (!oldBlock) {
+            throw new ApiException(
+              HttpStatus.BAD_REQUEST,
+              'Invalid previousBlockId',
+            );
+          }
+        } else {
+          oldBlock = await this.prisma.block.findFirst({
+            where: {
+              findingDescriptions: condition,
+              previousBlockId: null,
+            },
+            include: {
+              nextBlock: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          });
+        }
+        break;
+      case BlockContentType.IMPACT:
+        if (previousBlockId) {
+          oldBlock = await this.prisma.block.findUnique({
+            where: {
+              id: previousBlockId,
+              AND: {
+                findingBusinessImpact: condition,
+              },
+            },
+            include: {
+              nextBlock: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          });
+          if (!oldBlock) {
+            throw new ApiException(
+              HttpStatus.BAD_REQUEST,
+              'Invalid previousBlockId',
+            );
+          }
+        } else {
+          oldBlock = await this.prisma.block.findFirst({
+            where: {
+              findingBusinessImpact: condition,
+              previousBlockId: null,
+            },
+            include: {
+              nextBlock: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          });
+        }
+        break;
+      case BlockContentType.RECOMMENDATION:
+        if (previousBlockId) {
+          oldBlock = await this.prisma.block.findUnique({
+            where: {
+              id: previousBlockId,
+              AND: {
+                findingRecomendation: condition,
+              },
+            },
+            include: {
+              nextBlock: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          });
+          if (!oldBlock) {
+            throw new ApiException(
+              HttpStatus.BAD_REQUEST,
+              'Invalid previousBlockId',
+            );
+          }
+        } else {
+          oldBlock = await this.prisma.block.findFirst({
+            where: {
+              findingRecomendation: condition,
+              previousBlockId: null,
+            },
+            include: {
+              nextBlock: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          });
+        }
+        break;
+      case BlockContentType.RETEST:
+        if (previousBlockId) {
+          oldBlock = await this.prisma.block.findUnique({
+            where: {
+              id: previousBlockId,
+              AND: {
+                findingRetestResult: condition,
+              },
+            },
+            include: {
+              nextBlock: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          });
+          if (!oldBlock) {
+            throw new ApiException(
+              HttpStatus.BAD_REQUEST,
+              'Invalid previousBlockId',
+            );
+          }
+        } else {
+          oldBlock = await this.prisma.block.findFirst({
+            where: {
+              findingRetestResult: condition,
+              previousBlockId: null,
+            },
+            include: {
+              nextBlock: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          });
+        }
+        break;
+      case BlockContentType.THREAT:
+        if (previousBlockId) {
+          oldBlock = await this.prisma.block.findUnique({
+            where: {
+              id: previousBlockId,
+              AND: {
+                findingThreatAndRisk: condition,
+              },
+            },
+            include: {
+              nextBlock: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          });
+          if (!oldBlock) {
+            throw new ApiException(
+              HttpStatus.BAD_REQUEST,
+              'Invalid previousBlockId',
+            );
+          }
+        } else {
+          oldBlock = await this.prisma.block.findFirst({
+            where: {
+              findingThreatAndRisk: condition,
+              previousBlockId: null,
+            },
+            include: {
+              nextBlock: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          });
+        }
+        break;
+    }
+    return oldBlock;
   }
 }

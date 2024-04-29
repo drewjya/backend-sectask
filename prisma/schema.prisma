@@ -42,6 +42,7 @@ model File {
   subProjectAttachments SubProject[] @relation("SubProjectAttachments")
   subProjectReports     SubProject[] @relation("SubProjectReports")
   project               Project[]
+  Block                 Block[]
 }
 
 model RecentActivities {
@@ -72,8 +73,8 @@ model Project {
   updatedAt        DateTime        @updatedAt
   deletedAt        DateTime?
 
-  subProjects       SubProject[]
-  recentActivities  RecentActivities @relation(fields: [recentActivitiesId], references: [id])
+  subProjects        SubProject[]
+  recentActivities   RecentActivities @relation(fields: [recentActivitiesId], references: [id])
   recentActivitiesId Int
 }
 
@@ -92,21 +93,21 @@ model ProjectMember {
 }
 
 model SubProject {
-  id                Int                @id @default(autoincrement())
-  name              String
-  startDate         DateTime
-  endDate           DateTime
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  deletedAt         DateTime?
-  members           SubprojectMember[]
-  findings          Finding[]
-  attachments       File[]             @relation("SubProjectAttachments")
-  reports           File[]             @relation("SubProjectReports")
-  recentActivities  RecentActivities    @relation(fields: [recentActivitiesId], references: [id])
+  id                 Int                @id @default(autoincrement())
+  name               String
+  startDate          DateTime
+  endDate            DateTime
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+  members            SubprojectMember[]
+  findings           Finding[]
+  attachments        File[]             @relation("SubProjectAttachments")
+  reports            File[]             @relation("SubProjectReports")
+  recentActivities   RecentActivities   @relation(fields: [recentActivitiesId], references: [id])
   recentActivitiesId Int
-  project           Project            @relation(fields: [projectId], references: [id])
-  projectId         Int
+  project            Project            @relation(fields: [projectId], references: [id])
+  projectId          Int
 }
 
 model SubprojectMember {
@@ -124,7 +125,7 @@ model SubprojectMember {
 }
 
 model Finding {
-  id          Int    @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   risk        String?
   location    String?
@@ -141,15 +142,19 @@ model Finding {
   recomendation  Block[] @relation("FindingsRecomendation")
   retestResult   Block[] @relation("FindingsRetestResult")
 
-  subProject        SubProject      @relation(fields: [subProjectId], references: [id])
-  subProjectId      Int
-  recentActivities  RecentActivities @relation(fields: [recentActivitiesId], references: [id])
+  subProject         SubProject       @relation(fields: [subProjectId], references: [id])
+  subProjectId       Int
+  recentActivities   RecentActivities @relation(fields: [recentActivitiesId], references: [id])
   recentActivitiesId Int
 }
 
 model Block {
   id                    String    @id @default(uuid())
-  content               String
+  content               String    @default("<p></p>")
+  type                  BlockType @default(PARAGRAPH)
+  fileId                Int?
+  file                  File?     @relation(fields: [fileId], references: [id])
+  isChecked             Boolean   @default(false)
   previousBlockId       String?   @unique
   previousBlock         Block?    @relation("BlockPreviousBlock", fields: [previousBlockId], references: [id])
   nextBlock             Block?    @relation("BlockPreviousBlock")
@@ -160,6 +165,21 @@ model Block {
   findingBusinessImpact Finding[] @relation("FindingsBusinessImpact")
   findingRecomendation  Finding[] @relation("FindingsRecomendation")
   findingRetestResult   Finding[] @relation("FindingsRetestResult")
+}
+
+enum BlockType {
+  HEADING_1
+  HEADING_2
+  HEADING_3
+  BLOCK_QUOTES
+  BULLET_LIST
+  NUMBERED_LIST
+  CHECKBOX
+  PARAGRAPH
+  DIVIDER
+  FILE
+  IMAGE
+  COLLECTION
 }
 
 enum ProjectRole {

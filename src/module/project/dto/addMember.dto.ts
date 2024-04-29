@@ -1,9 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ProjectRole } from '@prisma/client';
-import { IsEnum, NotEquals } from 'class-validator';
+import { IsEnum, IsNumber, NotEquals } from 'class-validator';
 
 export class AddMemberDto {
   @ApiProperty()
+  @IsNumber()
   userId: number;
 
   @IsEnum(ProjectRole)

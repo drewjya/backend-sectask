@@ -21,6 +21,8 @@ import { ProjectModule } from './module/project/project.module';
 import { RepositoryModule } from './module/repository/repository.module';
 import { SubprojectModule } from './module/subproject/subproject.module';
 
+import { BlocksModule } from './module/blocks/blocks.module';
+
 @Module({
   imports: [
     PrismaModule,
@@ -45,6 +47,8 @@ import { SubprojectModule } from './module/subproject/subproject.module';
     FileUploadModule,
     EventsModule,
     RepositoryModule,
+
+    BlocksModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],
