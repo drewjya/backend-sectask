@@ -166,94 +166,6 @@ export class FindingService {
     }
   }
 
-  // async updateDescription(params: {
-  //   blockId: string;
-  //   content: string;
-  //   userId: number;
-  //   newPreviousBlockId?: string;
-  //   findingId: number;
-  //   contentType: BlockContentType;
-  // }) {
-  //   const {
-  //     blockId,
-  //     content,
-  //     newPreviousBlockId,
-  //     findingId,
-  //     contentType,
-  //     userId,
-  //   } = params;
-  // await this.findFindingById({ findingId, userId });
-  //   let condition = conditionDelete({
-  //     contentType: contentType,
-  //     findingId: findingId,
-  //   });
-
-  //   const currentBlock = await this.prisma.block.findUnique({
-  //     where: { id: blockId, AND: condition },
-  //     include: {
-  //       previousBlock: true,
-  //       nextBlock: true, // You might need custom logic to identify the next block
-  //     },
-  //   });
-
-  //   if (!currentBlock) {
-  //     throw new ApiException(HttpStatus.NOT_FOUND, 'Block not found.');
-  //   }
-
-  // if (content) {
-  //   await this.prisma.block.update({
-  //     where: { id: blockId },
-  //     data: { content: content },
-  //   });
-  // }
-
-  // if (
-  //   newPreviousBlockId !== undefined &&
-  //   currentBlock.previousBlockId !== newPreviousBlockId
-  // ) {
-  //   // Detach the block from its current position by linking its next and previous blocks
-  //   if (currentBlock.previousBlock) {
-  //     await this.prisma.block.update({
-  //       where: { id: currentBlock.previousBlock.id },
-  //       data: {
-  //         nextBlock: currentBlock.nextBlock
-  //           ? { connect: { id: currentBlock.nextBlock.id } }
-  //           : { disconnect: true },
-  //       },
-  //     });
-  //   }
-  //   if (currentBlock.nextBlock) {
-  //     await this.prisma.block.update({
-  //       where: { id: currentBlock.nextBlock.id },
-  //       data: {
-  //         previousBlockId: currentBlock.previousBlock
-  //           ? currentBlock.previousBlock.id
-  //           : null,
-  //       },
-  //     });
-  //   }
-
-  //   // Attach the block to the new position
-  //   // Update the new previous block's next to point to the current block
-  //   if (newPreviousBlockId) {
-  //     await this.prisma.block.update({
-  //       where: { id: newPreviousBlockId },
-  //       data: { nextBlock: { connect: { id: blockId } } },
-  //     });
-  //   }
-  //   // Update the current block's previous to the newPreviousBlockId
-  //   await this.prisma.block.update({
-  //     where: { id: blockId },
-  //     data: { previousBlockId: newPreviousBlockId },
-  //   });
-
-  //   // If there is a block that was originally next to the new previous block, update its previous to the current block
-  //   // This step may require you to find and update the block that was the next of newPreviousBlock before the update, which is not shown here for brevity.
-  // }
-
-  // return { message: 'Block updated successfully.' };
-  // }
-
   async createContent(param: {
     findingId: number;
     userId: number;
@@ -318,6 +230,14 @@ export class FindingService {
     if (!deletedBlock) {
       throw new ApiException(HttpStatus.NOT_FOUND, 'Block not found.');
     }
+    if (deletedBlock.file) {
+      await this.fileUpload.deleteFile(deletedBlock.file.imagePath);
+      await this.prisma.file.delete({
+        where: {
+          id: deletedBlock.file.id,
+        },
+      });
+    }
     await this.prisma.block.delete({
       where: { id: deletedBlock.id },
     });
@@ -340,7 +260,7 @@ export class FindingService {
   }
 
   //CONTROLLER
-  async editContnet(params: {
+  async editContent(params: {
     blockId: string;
     content: string;
     userId: number;
@@ -370,10 +290,21 @@ export class FindingService {
       throw new ApiException(HttpStatus.NOT_FOUND, 'block_not_found');
     }
 
+    if (currentBlock.type !== blockType && currentBlock.file) {
+      await this.fileUpload.deleteFile(currentBlock.file.imagePath);
+      await this.prisma.file.delete({
+        where: {
+          id: currentBlock.file.id,
+        },
+      });
+    }
     if (content) {
       await this.prisma.block.update({
         where: { id: blockId },
-        data: { content: content, type: blockType },
+        data: {
+          content: content,
+          type: blockType,
+        },
       });
     }
     if (
@@ -423,6 +354,36 @@ export class FindingService {
     return { message: 'Block updated successfully.' };
   }
 
+  async uploadFileBlock(params: {
+    userId: number;
+    blockId: string;
+    findingId: number;
+    file: Express.Multer.File;
+  }) {
+    const { userId, blockId, file, findingId } = params;
+    await this.findFindingById({
+      findingId,
+      userId,
+    });
+
+    const created = await this.fileUpload.uploadFile(file);
+    await this.prisma.block.update({
+      where: {
+        id: blockId,
+      },
+      data: {
+        file: {
+          connect: {
+            id: created.id,
+          },
+        },
+      },
+    });
+
+    return {
+      message: 'Success Upload File',
+    };
+  }
   // Library Internal
 
   private async findFindingById(params: { findingId: number; userId: number }) {
@@ -493,6 +454,7 @@ export class FindingService {
       where: where,
       include: {
         previousBlock: true,
+        file: true,
         nextBlock: true, // Assuming you manage to infer nextBlock through some logic or structure
       },
     });

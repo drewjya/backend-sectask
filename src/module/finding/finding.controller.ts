@@ -4,12 +4,17 @@ import {
   Get,
   HttpStatus,
   Param,
+  ParseFilePipe,
   Post,
   Put,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guards/accesToken.guard';
 import { SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
@@ -68,7 +73,7 @@ export class FindingController {
         contentType: description.contentType,
       });
     } else if (description.action === Action.EDIT) {
-      return this.findingService.editContnet({
+      return this.findingService.editContent({
         blockId: description.blockId ?? '',
         content: description.content,
         userId: userId,
@@ -95,6 +100,49 @@ export class FindingController {
       memberId: userId,
       name: newFinding.name,
       risk: newFinding.risk,
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @ApiBearerAuth('access-token')
+  @Post(':findingId/file/:blockId')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+        },
+        email: {
+          type: 'string',
+        },
+
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file', {}))
+  editUser(
+    @Req() req: Request,
+    @Param('findingId') findingId: string,
+    @Param('blockId') blockId: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        fileIsRequired: true,
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    const userId = req.user['sub'];
+    return this.findingService.uploadFileBlock({
+      file: file,
+      blockId: blockId,
+      findingId: +findingId,
+      userId: userId,
     });
   }
 }
