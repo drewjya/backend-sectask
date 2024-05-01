@@ -48,10 +48,6 @@ export class FileUploadController {
       newFile,
       file,
     );
-    // this.emitter.emit(PROJECT_ON_MESSAGE.ADD_MEMBER, {
-    //   projectId: +projectId,
-    //   userId: addMember.userId,
-    // });
     if (newFile.documentType === DocumentType.PROJECT) {
       const projectEvent =
         newFile.type === FileType.ATTACHMENT
