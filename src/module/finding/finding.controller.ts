@@ -43,7 +43,7 @@ export class FindingController {
 
   @UseGuards(AccessTokenGuard)
   @Get(':findingId')
-  getSubProject(@Req() req: Request, @Param('findingId') findingId: string) {
+  getFindingDetail(@Req() req: Request, @Param('findingId') findingId: string) {
     let userId = req.user['sub'];
     return this.findingService.getFindingDetail(userId, +findingId);
   }
@@ -105,7 +105,7 @@ export class FindingController {
 
   @UseGuards(AccessTokenGuard)
   @ApiBearerAuth('access-token')
-  @Post(':findingId/file/:blockId')
+  @Post('file/:findingId/:blockId')
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -126,7 +126,7 @@ export class FindingController {
     },
   })
   @UseInterceptors(FileInterceptor('file', {}))
-  editUser(
+  uploadFileFinding(
     @Req() req: Request,
     @Param('findingId') findingId: string,
     @Param('blockId') blockId: string,

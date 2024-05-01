@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { BlockType, Prisma } from '@prisma/client';
+import { BlockType, File, Prisma } from '@prisma/client';
 import { FileUploadService } from 'src/module/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
@@ -19,6 +19,7 @@ export class FindingService {
           id: true,
         },
       },
+      file: true,
     },
   };
 
@@ -123,10 +124,39 @@ export class FindingService {
             projectId: true,
           },
         },
+
         threatAndRisk: this.INFO,
       },
     });
-    return finding;
+
+    let data = {
+      id: finding.id,
+      name: finding.name,
+      risk: finding.risk,
+      location: finding.location,
+      method: finding.method,
+      environment: finding.environment,
+      application: finding.application,
+      impact: finding.impact,
+      likelihood: finding.likelihood,
+      findingDate: finding.findingDate,
+      subProjectId: finding.subProjectId,
+      recentActivitiesId: finding.recentActivitiesId,
+      subProject: finding.subProject,
+      recentActivities: finding.recentActivities,
+      description: [],
+      businessImpact: [],
+      recomendation: [],
+      retestResult: [],
+      threatAndRisk: [],
+    };
+    data.description = await this.dataConverter(finding.description);
+    data.businessImpact = await this.dataConverter(finding.businessImpact);
+    data.recomendation = await this.dataConverter(finding.recomendation);
+    data.retestResult = await this.dataConverter(finding.retestResult);
+    data.threatAndRisk = await this.dataConverter(finding.threatAndRisk);
+
+    return data;
   }
 
   //Controller
@@ -385,6 +415,75 @@ export class FindingService {
     };
   }
   // Library Internal
+
+  private async dataConverter(
+    data: {
+      id: string;
+      content: string;
+      type: string;
+      fileId: number;
+      isChecked: boolean;
+      previousBlockId?: string;
+      createdAt: Date;
+      updatedAt: Date;
+      nextBlock?: { id: string };
+      file?: File;
+    }[],
+  ) {
+    let descr: {
+      id: string;
+      content: string;
+      type: string;
+      fileId: number;
+      isChecked: boolean;
+      previousBlockId?: string;
+      createdAt: Date;
+      updatedAt: Date;
+      nextBlock?: { id: string };
+      file?: string;
+    }[] = [];
+    for (let index = 0; index < data.length; index++) {
+      const element = data[index];
+      if (element.file) {
+        const url = await this.fileUpload.getFileUrl(
+          element.file.imagePath,
+          element.file.contentType,
+        );
+        descr = [
+          ...descr,
+          {
+            id: element.id,
+            content: element.content,
+            type: element.type,
+            fileId: element.fileId,
+            isChecked: element.isChecked,
+            previousBlockId: element.previousBlockId,
+            createdAt: element.createdAt,
+            updatedAt: element.updatedAt,
+            nextBlock: element.nextBlock,
+            file: url,
+          },
+        ];
+      } else {
+        descr = [
+          ...descr,
+          {
+            id: element.id,
+            content: element.content,
+            type: element.type,
+            fileId: element.fileId,
+            isChecked: element.isChecked,
+            previousBlockId: element.previousBlockId,
+            createdAt: element.createdAt,
+            updatedAt: element.updatedAt,
+            nextBlock: element.nextBlock,
+            file: null,
+          },
+        ];
+      }
+    }
+    return descr;
+  }
 
   private async findFindingById(params: { findingId: number; userId: number }) {
     const { findingId, userId } = params;

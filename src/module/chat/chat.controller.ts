@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpStatus,
   Param,
   Post,
@@ -37,5 +38,18 @@ export class ChatController {
       subprojectId: +subproejctId,
       replyChatId: param.replyChatId,
     });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get(':subprojectId')
+  getChat(@Req() req: Request, @Param('subprojectId') subproejctId: string) {
+    const userId = req.user['sub'];
+    if (!Number(subproejctId)) {
+      throw new ApiException(
+        HttpStatus.BAD_REQUEST,
+        'wrong_subproject_parameter',
+      );
+    }
+    return this.chatService.getChats(+subproejctId);
   }
 }
