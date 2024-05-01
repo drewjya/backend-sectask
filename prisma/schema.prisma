@@ -189,12 +189,9 @@ model Chat {
   replyChat   Chat?    @relation("Replies", fields: [replyChatId], references: [id])
   repliedBy   Chat[]   @relation("Replies")
 
-  previousChatId Int?      @unique
-  previousChat   Chat?     @relation("ChatPreviousChat", fields: [previousChatId], references: [id])
-  nextChat       Chat?     @relation("ChatPreviousChat")
-  userId         Int
-  ChatRoom       ChatRoom? @relation(fields: [chatRoomId], references: [id])
-  chatRoomId     Int?
+  userId     Int
+  ChatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
+  chatRoomId Int?
 }
 
 enum BlockType {

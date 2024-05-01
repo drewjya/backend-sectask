@@ -22,6 +22,7 @@ import { RepositoryModule } from './module/repository/repository.module';
 import { SubprojectModule } from './module/subproject/subproject.module';
 
 import { BlocksModule } from './module/blocks/blocks.module';
+import { ChatModule } from './module/chat/chat.module';
 
 @Module({
   imports: [
@@ -49,6 +50,8 @@ import { BlocksModule } from './module/blocks/blocks.module';
     RepositoryModule,
 
     BlocksModule,
+
+    ChatModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],
