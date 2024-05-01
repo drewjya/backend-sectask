@@ -3,13 +3,7 @@ import { BlockType, Prisma } from '@prisma/client';
 import { FileUploadService } from 'src/module/file-upload/file-upload.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
-import {
-  BlockContentType,
-  conditionDelete,
-  FetchOldBlock,
-  getDataAdd,
-  getIncludeAndConditionAdd,
-} from './dto/actionDescription.dto';
+import { BlockContentType, FetchOldBlock } from './dto/actionDescription.dto';
 import { NewFindingDto } from './dto/newFinding.dto';
 
 @Injectable()
@@ -28,27 +22,7 @@ export class FindingService {
     },
   };
 
-  async findFindingById(params: { findingId: number; userId: number }) {
-    const { findingId, userId } = params;
-    const finding = await this.prisma.finding.findUnique({
-      where: {
-        id: findingId,
-        subProject: {
-          members: {
-            some: {
-              userId: userId,
-              role: 'CONSULTANT',
-            },
-          },
-        },
-      },
-    });
-
-    if (!finding) {
-      throw new ApiException(HttpStatus.FORBIDDEN, 'Forbidden');
-    }
-  }
-
+  //Controller
   async create(memberId: number, newFindingDto: NewFindingDto) {
     const subprojectFind = await this.prisma.subProject.findUnique({
       where: {
@@ -122,7 +96,7 @@ export class FindingService {
 
     return finding;
   }
-
+  //Controller
   async getFindingDetail(memberId: number, findingId: number) {
     const finding = await this.prisma.finding.findUnique({
       where: {
@@ -155,6 +129,7 @@ export class FindingService {
     return finding;
   }
 
+  //Controller
   async editFinding(params: {
     memberId: number;
     finding: number;
@@ -191,76 +166,125 @@ export class FindingService {
     }
   }
 
-  async insertContent(params: {
+  // async updateDescription(params: {
+  //   blockId: string;
+  //   content: string;
+  //   userId: number;
+  //   newPreviousBlockId?: string;
+  //   findingId: number;
+  //   contentType: BlockContentType;
+  // }) {
+  //   const {
+  //     blockId,
+  //     content,
+  //     newPreviousBlockId,
+  //     findingId,
+  //     contentType,
+  //     userId,
+  //   } = params;
+  // await this.findFindingById({ findingId, userId });
+  //   let condition = conditionDelete({
+  //     contentType: contentType,
+  //     findingId: findingId,
+  //   });
+
+  //   const currentBlock = await this.prisma.block.findUnique({
+  //     where: { id: blockId, AND: condition },
+  //     include: {
+  //       previousBlock: true,
+  //       nextBlock: true, // You might need custom logic to identify the next block
+  //     },
+  //   });
+
+  //   if (!currentBlock) {
+  //     throw new ApiException(HttpStatus.NOT_FOUND, 'Block not found.');
+  //   }
+
+  // if (content) {
+  //   await this.prisma.block.update({
+  //     where: { id: blockId },
+  //     data: { content: content },
+  //   });
+  // }
+
+  // if (
+  //   newPreviousBlockId !== undefined &&
+  //   currentBlock.previousBlockId !== newPreviousBlockId
+  // ) {
+  //   // Detach the block from its current position by linking its next and previous blocks
+  //   if (currentBlock.previousBlock) {
+  //     await this.prisma.block.update({
+  //       where: { id: currentBlock.previousBlock.id },
+  //       data: {
+  //         nextBlock: currentBlock.nextBlock
+  //           ? { connect: { id: currentBlock.nextBlock.id } }
+  //           : { disconnect: true },
+  //       },
+  //     });
+  //   }
+  //   if (currentBlock.nextBlock) {
+  //     await this.prisma.block.update({
+  //       where: { id: currentBlock.nextBlock.id },
+  //       data: {
+  //         previousBlockId: currentBlock.previousBlock
+  //           ? currentBlock.previousBlock.id
+  //           : null,
+  //       },
+  //     });
+  //   }
+
+  //   // Attach the block to the new position
+  //   // Update the new previous block's next to point to the current block
+  //   if (newPreviousBlockId) {
+  //     await this.prisma.block.update({
+  //       where: { id: newPreviousBlockId },
+  //       data: { nextBlock: { connect: { id: blockId } } },
+  //     });
+  //   }
+  //   // Update the current block's previous to the newPreviousBlockId
+  //   await this.prisma.block.update({
+  //     where: { id: blockId },
+  //     data: { previousBlockId: newPreviousBlockId },
+  //   });
+
+  //   // If there is a block that was originally next to the new previous block, update its previous to the current block
+  //   // This step may require you to find and update the block that was the next of newPreviousBlock before the update, which is not shown here for brevity.
+  // }
+
+  // return { message: 'Block updated successfully.' };
+  // }
+
+  async createContent(param: {
     findingId: number;
-    memberId: number;
+    userId: number;
+    blockType: BlockType;
     content: string;
     contentType: BlockContentType;
     previousBlockId?: string;
   }) {
-    const { findingId, memberId, content, previousBlockId, contentType } =
-      params;
-    await this.findFindingById({ findingId, userId: memberId });
-    let oldBlock: {
-      nextBlock: {
-        id: string;
-        content: string;
-        previousBlockId: string;
-        createdAt: Date;
-        updatedAt: Date;
-      };
-    } & {
-      id: string;
-      content: string;
-      previousBlockId: string;
-      createdAt: Date;
-      updatedAt: Date;
-    } = null;
+    const {
+      findingId,
+      userId,
+      blockType,
+      contentType,
+      previousBlockId,
+      content,
+    } = param;
+    await this.findFindingById({ findingId, userId: userId });
 
-    let { condition, include } = getIncludeAndConditionAdd({
+    const oldBlock = await this.getOldBlock({
       contentType: contentType,
+      previousBlockId: previousBlockId,
       findingId: findingId,
     });
 
-    if (previousBlockId) {
-      condition.id = previousBlockId;
-      oldBlock = await this.prisma.block.findUnique({
-        where: condition,
-        include: include,
-      });
-
-      if (!oldBlock) {
-        throw new ApiException(
-          HttpStatus.BAD_REQUEST,
-          'Invalid previousBlockId',
-        );
-      }
-    } else {
-      let newCond = {
-        previousBlockId: null,
-        ...condition,
-      };
-
-      oldBlock = await this.prisma.block.findFirst({
-        where: newCond,
-        include: include,
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-    }
-
-    let data: any = getDataAdd({
-      blockId: oldBlock?.id,
+    const createdBlock = await this.createBlock({
+      previousBlockId: oldBlock?.id,
       content: content,
       contentType: contentType,
+      blockType: blockType,
       findingId: findingId,
     });
-    // Create the new description block
-    const description = await this.prisma.block.create({
-      data: data,
-    });
-
     if (oldBlock && oldBlock.nextBlock) {
       await this.prisma.block.update({
         where: {
@@ -269,57 +293,44 @@ export class FindingService {
         data: {
           previousBlock: {
             connect: {
-              id: description.id,
+              id: createdBlock.id,
             },
           },
         },
       });
     }
-    return description;
+    return createdBlock;
   }
-
-  async deleteDescription(params: {
-    blockId: string;
+  //CONTROLLER
+  async deleteContent(params: {
+    userId: number;
     findingId: number;
-    memberId: number;
+    blockId: string;
     contentType: BlockContentType;
   }) {
-    const { blockId, findingId, memberId, contentType } = params;
-    await this.findFindingById({ findingId, userId: memberId });
-    let condition = conditionDelete({
+    const { userId, findingId, blockId, contentType } = params;
+    await this.findFindingById({ findingId: findingId, userId: userId });
+    const deletedBlock = await this.findBlockByIdAndContentType({
+      blockId: blockId,
       contentType: contentType,
       findingId: findingId,
     });
-
-    const blockToDelete = await this.prisma.block.findFirst({
-      where: {
-        id: blockId,
-        AND: condition,
-      },
-      include: {
-        previousBlock: true,
-        nextBlock: true, // Assuming you manage to infer nextBlock through some logic or structure
-      },
-    });
-
-    console.log(blockToDelete);
-
-    if (!blockToDelete) {
+    if (!deletedBlock) {
       throw new ApiException(HttpStatus.NOT_FOUND, 'Block not found.');
     }
     await this.prisma.block.delete({
-      where: { id: blockToDelete.id },
+      where: { id: deletedBlock.id },
     });
 
-    if (blockToDelete.previousBlock && blockToDelete.nextBlock) {
+    if (deletedBlock.previousBlock && deletedBlock.nextBlock) {
       await this.prisma.block.update({
-        where: { id: blockToDelete.nextBlock.id },
-        data: { previousBlockId: blockToDelete.previousBlock.id },
+        where: { id: deletedBlock.nextBlock.id },
+        data: { previousBlockId: deletedBlock.previousBlock.id },
       });
-    } else if (!blockToDelete.previousBlock && blockToDelete.nextBlock) {
+    } else if (!deletedBlock.previousBlock && deletedBlock.nextBlock) {
       // If the deleted block was the first in the chain
       await this.prisma.block.update({
-        where: { id: blockToDelete.nextBlock.id },
+        where: { id: deletedBlock.nextBlock.id },
         data: { previousBlockId: null },
       });
     }
@@ -328,10 +339,12 @@ export class FindingService {
     return { message: 'Description deleted successfully.' };
   }
 
-  async updateDescription(params: {
+  //CONTROLLER
+  async editContnet(params: {
     blockId: string;
     content: string;
     userId: number;
+    blockType: BlockType;
     newPreviousBlockId?: string;
     findingId: number;
     contentType: BlockContentType;
@@ -343,32 +356,26 @@ export class FindingService {
       findingId,
       contentType,
       userId,
+      blockType,
     } = params;
     await this.findFindingById({ findingId, userId });
-    let condition = conditionDelete({
+
+    const currentBlock = await this.findBlockByIdAndContentType({
+      blockId: blockId,
       contentType: contentType,
       findingId: findingId,
     });
 
-    const currentBlock = await this.prisma.block.findUnique({
-      where: { id: blockId, AND: condition },
-      include: {
-        previousBlock: true,
-        nextBlock: true, // You might need custom logic to identify the next block
-      },
-    });
-
     if (!currentBlock) {
-      throw new ApiException(HttpStatus.NOT_FOUND, 'Block not found.');
+      throw new ApiException(HttpStatus.NOT_FOUND, 'block_not_found');
     }
 
     if (content) {
       await this.prisma.block.update({
         where: { id: blockId },
-        data: { content: content },
+        data: { content: content, type: blockType },
       });
     }
-
     if (
       newPreviousBlockId !== undefined &&
       currentBlock.previousBlockId !== newPreviousBlockId
@@ -416,55 +423,83 @@ export class FindingService {
     return { message: 'Block updated successfully.' };
   }
 
-  async createContent(param: {
-    findingId: number;
-    userId: number;
-    blockType: BlockType;
-    content: string;
-    contentType: BlockContentType;
-    previousBlockId?: string;
-  }) {
-    const {
-      findingId,
-      userId,
-      blockType,
-      contentType,
-      previousBlockId,
-      content,
-    } = param;
-    await this.findFindingById({ findingId, userId: userId });
+  // Library Internal
 
-    const oldBlock = await this.getOldBlock({
-      contentType: contentType,
-      previousBlockId: previousBlockId,
-      findingId: findingId,
-    });
-
-    const createdBlock = await this.createBlock({
-      previousBlockId: oldBlock?.id,
-      content: '',
-      contentType: contentType,
-      blockType: blockType,
-      findingId: findingId,
-    });
-    if (oldBlock && oldBlock.nextBlock) {
-      await this.prisma.block.update({
-        where: {
-          id: oldBlock.nextBlock.id,
-        },
-        data: {
-          previousBlock: {
-            connect: {
-              id: createdBlock.id,
+  private async findFindingById(params: { findingId: number; userId: number }) {
+    const { findingId, userId } = params;
+    const finding = await this.prisma.finding.findUnique({
+      where: {
+        id: findingId,
+        subProject: {
+          members: {
+            some: {
+              userId: userId,
+              role: 'CONSULTANT',
             },
           },
         },
-      });
+      },
+    });
+
+    if (!finding) {
+      throw new ApiException(HttpStatus.FORBIDDEN, 'Forbidden');
     }
-    return createdBlock;
+  }
+  private async findBlockByIdAndContentType(params: {
+    blockId: string;
+    contentType: BlockContentType;
+    findingId: number;
+  }) {
+    const { blockId, contentType, findingId } = params;
+    let where: Prisma.BlockWhereUniqueInput = {
+      id: blockId,
+    };
+    const condition = {
+      some: {
+        id: findingId,
+      },
+    };
+
+    switch (contentType) {
+      case BlockContentType.DESCRIPTION:
+        where.AND = {
+          findingDescriptions: condition,
+        };
+        break;
+
+      case BlockContentType.IMPACT:
+        where.AND = {
+          findingBusinessImpact: condition,
+        };
+        break;
+      case BlockContentType.RECOMMENDATION:
+        where.AND = {
+          findingRecomendation: condition,
+        };
+        break;
+      case BlockContentType.RETEST:
+        where.AND = {
+          findingRetestResult: condition,
+        };
+        break;
+      case BlockContentType.THREAT:
+        where.AND = {
+          findingThreatAndRisk: condition,
+        };
+        break;
+    }
+
+    const deletedBlock = await this.prisma.block.findFirst({
+      where: where,
+      include: {
+        previousBlock: true,
+        nextBlock: true, // Assuming you manage to infer nextBlock through some logic or structure
+      },
+    });
+    return deletedBlock;
   }
 
-  async createBlock(params: {
+  private async createBlock(params: {
     previousBlockId?: string;
     content: string;
     blockType: BlockType;
@@ -517,7 +552,7 @@ export class FindingService {
     return blockCreated;
   }
 
-  async getOldBlock(params: {
+  private async getOldBlock(params: {
     contentType: BlockContentType;
     previousBlockId?: string;
     findingId: number;

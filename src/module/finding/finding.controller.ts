@@ -52,28 +52,30 @@ export class FindingController {
   ) {
     let userId = req.user['sub'];
     if (description.action === Action.ADD) {
-      return this.findingService.insertContent({
+      return this.findingService.createContent({
         findingId: +findingId,
-        memberId: userId,
+        blockType: description.blockType,
         content: description.content,
-        previousBlockId: description.previousBlockId,
         contentType: description.contentType,
+        userId: userId,
+        previousBlockId: description.previousBlockId,
       });
     } else if (description.action === Action.DELETE) {
-      return this.findingService.deleteDescription({
+      return this.findingService.deleteContent({
         blockId: description.blockId,
         findingId: +findingId,
-        memberId: userId,
+        userId: userId,
         contentType: description.contentType,
       });
     } else if (description.action === Action.EDIT) {
-      return this.findingService.updateDescription({
+      return this.findingService.editContnet({
         blockId: description.blockId ?? '',
         content: description.content,
         userId: userId,
         findingId: +findingId,
         newPreviousBlockId: description.previousBlockId,
         contentType: description.contentType,
+        blockType: description.blockType,
       });
     }
 

@@ -77,6 +77,9 @@ export class SubprojectService {
             id: createSubprojectDto.projectId,
           },
         },
+        chatRoom: {
+          create: {},
+        },
         members: {
           create: members,
         },

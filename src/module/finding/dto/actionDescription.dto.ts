@@ -238,6 +238,10 @@ export class ActionDescriptionDto {
   blockId?: string;
 
   @ApiProperty()
+  @IsEnum(BlockType)
+  blockType: BlockType;
+
+  @ApiProperty()
   @IsEnum(BlockContentType)
   contentType: BlockContentType;
 }
