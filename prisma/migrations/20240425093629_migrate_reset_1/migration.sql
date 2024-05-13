@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "Block" ALTER COLUMN "type" SET DEFAULT 'PARAGRAPH';
