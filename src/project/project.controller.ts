@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -22,6 +23,7 @@ export class ProjectController {
   @Post('new')
   create(@Body() createProjectDto: CreateProjectDto, @Req() req: Request) {
     const userId = extractUserId(req);
+    console.log(userId);
     return this.projectService.create(createProjectDto, userId);
   }
 
@@ -60,7 +62,7 @@ export class ProjectController {
   }
 
   @UseGuards(AccessTokenGuard)
-  @Get(':id/members')
+  @Get(':id/member')
   searchMembers(
     @Req() req: Request,
     @Query('email') email: string,
@@ -73,7 +75,7 @@ export class ProjectController {
     });
   }
   @UseGuards(AccessTokenGuard)
-  @Post(':id/members')
+  @Post(':id/member')
   addMember(
     @Req() req: Request,
     @Query('email') email: string,
@@ -86,6 +88,22 @@ export class ProjectController {
       projectId: +id,
       userId: body.userId,
       role: body.role,
+    });
+  }
+  
+  @UseGuards(AccessTokenGuard)
+  @Delete(':id/member')
+  removeMember(
+    @Req() req: Request,
+    @Query('email') email: string,
+    @Param('id') id: string,
+    @Body() body: AddMemberDto,
+  ) {
+    const userId = extractUserId(req);
+    return this.projectService.removeMember({
+      adminId: userId,
+      projectId: +id,
+      userId: body.userId,
     });
   }
 

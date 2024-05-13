@@ -124,7 +124,7 @@ export class ProjectQuery {
   }
 
   async updateRecentActivities(param: {
-    title: string;
+    title?: string;
     description: string;
     recentActivitiesId: number;
   }) {

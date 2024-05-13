@@ -1,26 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { CreateSubprojectDto } from './dto/create-subproject.dto';
-import { UpdateSubprojectDto } from './dto/update-subproject.dto';
+import { SubprojectRole } from '@prisma/client';
+import { ProjectQuery } from 'src/common/query/project.query';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class SubprojectService {
-  create(createSubprojectDto: CreateSubprojectDto) {
-    return 'This action adds a new subproject';
+  private projectQuery: ProjectQuery;
+  constructor(private prisma: PrismaService) {
+    this.projectQuery = new ProjectQuery(prisma);
   }
-
-  findAll() {
-    return `This action returns all subproject`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} subproject`;
-  }
-
-  update(id: number, updateSubprojectDto: UpdateSubprojectDto) {
-    return `This action updates a #${id} subproject`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} subproject`;
+  async findDetail(param: { subprojectId: number; userId: number }) {
+    await this.projectQuery.checkIfSubprojectActive({
+      subproject: param.subprojectId,
+      userId: param.userId,
+      role: [
+        SubprojectRole.CONSULTANT,
+        SubprojectRole.DEVELOPER,
+        SubprojectRole.GUEST,
+        SubprojectRole.PM,
+        SubprojectRole.TECHNICAL_WRITER,
+      ],
+    });
   }
 }

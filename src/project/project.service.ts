@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ProjectRole } from '@prisma/client';
+import { ProjectRole, SubprojectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { notfound } from 'src/utils/exception/common.exception';
@@ -75,8 +75,6 @@ export class ProjectService {
     return project;
   }
 
-  
-
   findActiveProject(userId: number) {
     return this.projectQuery.getProjectByStatus({ userId, active: true });
   }
@@ -109,7 +107,7 @@ export class ProjectService {
     });
     await this.projectQuery.updateRecentActivities({
       recentActivitiesId: project.recentActivitiesId,
-      title: `${project.name}`,
+      title: `Project ${project.name}`,
       description: 'Project has been archived',
     });
   }
@@ -154,6 +152,12 @@ export class ProjectService {
     if (!user) {
       throw notfound;
     }
+    let subprojectRole: SubprojectRole = SubprojectRole.GUEST;
+    if (param.role === ProjectRole.TECHNICAL_WRITER) {
+      subprojectRole = SubprojectRole.TECHNICAL_WRITER;
+    } else if (param.role === ProjectRole.DEVELOPER) {
+      subprojectRole = SubprojectRole.DEVELOPER;
+    }
     const project = await this.prisma.project.update({
       where: {
         id: param.projectId,
@@ -166,12 +170,95 @@ export class ProjectService {
           },
         },
       },
+      include: {
+        subProjects: {
+          select: {
+            name: true,
+            id: true,
+            recentActivitiesId: true,
+          },
+        },
+      },
     });
     await this.projectQuery.updateRecentActivities({
       recentActivitiesId: project.recentActivitiesId,
-      title: `${project.name}`,
+      title: `Project ${project.name}`,
       description: `${user.name} has been added`,
     });
+
+    const subprojects = project.subProjects.map((subproject) => subproject);
+    for (const iterator of subprojects) {
+      await this.prisma.subProject.update({
+        where: {
+          id: iterator.id,
+        },
+        data: {
+          members: {
+            create: {
+              userId: param.userId,
+              role: subprojectRole,
+            },
+          },
+        },
+      });
+      await this.projectQuery.updateRecentActivities({
+        recentActivitiesId: iterator.recentActivitiesId,
+        title: `Subproject ${iterator.name}`,
+        description: `${user.name} has been added`,
+      });
+    }
     return project;
+  }
+
+  async removeMember(param: {
+    userId: number;
+    projectId: number;
+    adminId: number;
+  }) {
+    await this.projectQuery.checkIfProjectActive({
+      projectId: param.projectId,
+      userId: param.adminId,
+      role: [ProjectRole.OWNER],
+    });
+
+    const projectMember = await this.prisma.projectMember.delete({
+      where: {
+        projectId_userId: {
+          projectId: param.projectId,
+          userId: param.userId,
+        },
+      },
+      select: {
+        project: {
+          select: {
+            recentActivitiesId: true,
+            subProjects: true,
+          },
+        },
+        member: true,
+      },
+    });
+    await this.projectQuery.updateRecentActivities({
+      recentActivitiesId: projectMember.project.recentActivitiesId,
+      description: `${projectMember.member.name} has been removed`,
+    });
+
+    const subprojects = projectMember.project.subProjects;
+    for (const iterator of subprojects) {
+      await this.prisma.subprojectMember.delete({
+        where: {
+          subprojectId_userId: {
+            subprojectId: iterator.id,
+            userId: param.userId,
+          },
+        },
+      });
+      await this.projectQuery.updateRecentActivities({
+        recentActivitiesId: iterator.recentActivitiesId,
+        description: `${projectMember.member.name} has been removed`,
+      });
+    }
+
+    return true;
   }
 }

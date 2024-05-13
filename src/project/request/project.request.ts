@@ -40,3 +40,9 @@ export class AddMemberDto {
   @NotEquals(ProjectRole.OWNER)
   role: ProjectRole;
 }
+
+export class RemoveMemberDto {
+  @ApiProperty()
+  @IsNumber()
+  userId: number;
+}
