@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { SubprojectRole } from '@prisma/client';
-import { IsEnum, IsNumber } from 'class-validator';
+import { IsEnum, IsNumber, NotEquals } from 'class-validator';
 
 export class AddSubMemberDto {
   @ApiProperty()
@@ -9,5 +9,6 @@ export class AddSubMemberDto {
 
   @IsEnum(SubprojectRole)
   @ApiProperty()
+  @NotEquals(SubprojectRole.PM)
   role: SubprojectRole;
 }
