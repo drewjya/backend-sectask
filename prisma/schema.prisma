@@ -44,7 +44,7 @@ model File {
   subProjectReports     SubProject[] @relation("SubProjectReports")
   project               Project[]
   block                 Block[]
-  TableValue            TableValue[]
+  tableValue            TableValue[]
 }
 
 model RecentActivities {
