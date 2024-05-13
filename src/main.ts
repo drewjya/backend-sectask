@@ -1,7 +1,7 @@
 import { ClassSerializerInterceptor } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { AuthFilter } from './auth/auth.filter';
+import { AuthFilter, InternalServerFilter } from './auth/auth.filter';
 import { PrismaClientExceptionFilter } from './prisma/prisma.filter';
 import { TransformInterceptor } from './transform/transform.interceptor';
 import { SocketAdapter } from './utils/adapter/socket.adapter';
@@ -19,8 +19,11 @@ async function bootstrap() {
   const httpAdapter = app.get(HttpAdapterHost).httpAdapter.getInstance();
   const prismaFilter = new PrismaClientExceptionFilter(httpAdapter);
   const authFilter = new AuthFilter(httpAdapter);
+  const internalFilter = new InternalServerFilter(httpAdapter);
   app.useGlobalFilters(prismaFilter);
   app.useGlobalFilters(authFilter);
+  app.useGlobalFilters(internalFilter);
+
   app.useGlobalInterceptors(new TransformInterceptor());
   await app.listen(3000);
 }

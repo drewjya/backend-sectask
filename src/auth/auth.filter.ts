@@ -1,6 +1,10 @@
-import { ArgumentsHost, Catch } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  Catch,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
-import { Response } from 'express';
+import { response, Response } from 'express';
 import { ApiException } from 'src/utils/exception/api.exception';
 
 @Catch(ApiException)
@@ -9,7 +13,6 @@ export class AuthFilter extends BaseExceptionFilter {
     console.error(exception.message); // 3
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-
     const status = exception.getStatus();
     let error = {};
     const resp = exception.getResponse();
@@ -28,6 +31,28 @@ export class AuthFilter extends BaseExceptionFilter {
       data: null,
     };
 
+    response.status(status).json(errorResponse);
+  }
+}
+
+@Catch(InternalServerErrorException)
+export class InternalServerFilter extends BaseExceptionFilter {
+  catch(exception: InternalServerErrorException, host: ArgumentsHost): void {
+    const message = 'internal_error';
+
+    const ctx = host.switchToHttp();
+
+    const status = exception.getStatus();
+    let error = {};
+    const resp = exception.getResponse();
+    error['@root'] = message;
+    error['error'] = `${exception.message} | ${exception.stack}`;
+    const errorResponse = {
+      status: status,
+      error: error,
+      message: message,
+      data: null,
+    };
     response.status(status).json(errorResponse);
   }
 }
