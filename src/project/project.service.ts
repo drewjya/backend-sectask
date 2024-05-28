@@ -20,7 +20,7 @@ export class ProjectService {
         endDate: createProjectDto.endDate,
         startDate: createProjectDto.startDate,
         members: {
-          create: [{ role: 'OWNER', userId: userId }],
+          create: [{ role: 'PM', userId: userId }],
         },
         reports: {},
         recentActivities: {
@@ -95,7 +95,7 @@ export class ProjectService {
     await this.projectQuery.checkIfProjectActive({
       projectId,
       userId,
-      role: [ProjectRole.OWNER],
+      role: [ProjectRole.PM],
     });
     const project = await this.prisma.project.update({
       where: {
@@ -137,7 +137,7 @@ export class ProjectService {
     await this.projectQuery.checkIfProjectActive({
       projectId: param.projectId,
       userId: param.adminId,
-      role: [ProjectRole.OWNER],
+      role: [ProjectRole.PM],
     });
     const user = await this.prisma.user.findFirst({
       where: {
@@ -195,6 +195,7 @@ export class ProjectService {
         data: {
           members: {
             create: {
+              projectId: project.id,
               userId: param.userId,
               role: subprojectRole,
             },
@@ -218,7 +219,7 @@ export class ProjectService {
     await this.projectQuery.checkIfProjectActive({
       projectId: param.projectId,
       userId: param.adminId,
-      role: [ProjectRole.OWNER],
+      role: [ProjectRole.PM],
     });
 
     const projectMember = await this.prisma.projectMember.delete({
@@ -237,6 +238,12 @@ export class ProjectService {
           },
         },
         member: true,
+      },
+    });
+    await this.prisma.subprojectMember.deleteMany({
+      where: {
+        projectId: param.projectId,
+        userId: param.userId,
       },
     });
     await this.projectQuery.addProjectRecentActivities({

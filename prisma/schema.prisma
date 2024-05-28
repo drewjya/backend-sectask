@@ -113,10 +113,11 @@ model SubProject {
   reports          File[]             @relation("SubProjectReports")
   recentActivities SubProjectLog[]
 
-  project    Project  @relation(fields: [projectId], references: [id])
-  projectId  Int
-  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
-  chatRoomId Int
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId Int
+
+  ChatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
+  chatRoomId Int?
 }
 
 model SubprojectMember {
@@ -129,8 +130,7 @@ model SubprojectMember {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   deletedAt    DateTime?
-  Finding      Finding?       @relation(fields: [findingId], references: [id])
-  findingId    Int?
+  projectId    Int
 
   @@unique([subprojectId, userId])
 }
@@ -150,7 +150,6 @@ model Finding {
   latestUpdate DateTime?
 
   cvssDetail CVSS_VALUE
-  testers    SubprojectMember[]
   status     String?
   releases   String?
 
@@ -172,6 +171,9 @@ model Finding {
   subProject   SubProject @relation(fields: [subProjectId], references: [id])
   subProjectId Int
   userId       Int
+
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
+  chatRoomId Int
 }
 
 model Document {
@@ -228,6 +230,7 @@ model ChatRoom {
   chats     Chat[]
 
   subProject SubProject[]
+  Finding    Finding[]
 }
 
 model Chat {
@@ -264,7 +267,7 @@ enum CVSS_VALUE {
 
 enum ProjectRole {
   VIEWER
-  OWNER
+  PM
   DEVELOPER
   TECHNICAL_WRITER
 }
@@ -273,6 +276,6 @@ enum SubprojectRole {
   PM
   DEVELOPER
   TECHNICAL_WRITER
-  GUEST
+  VIEWER
   CONSULTANT
 }
