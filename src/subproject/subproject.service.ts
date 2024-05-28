@@ -117,6 +117,13 @@ export class SubprojectService {
             },
           },
         },
+        recentActivities: {
+          select: {
+            title: true,
+            description: true,
+            createdAt: true,
+          },
+        },
         findings: {
           select: {
             id: true,
@@ -277,7 +284,6 @@ export class SubprojectService {
     });
     return subproject;
   }
-
 
   async uploadProjectFile(param: {
     subprojectId: number;
