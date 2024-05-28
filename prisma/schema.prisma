@@ -170,8 +170,8 @@ model Finding {
   subProjectId Int
   userId       Int
 
-  chatRoom      ChatRoom        @relation(fields: [chatRoomId], references: [id])
-  chatRoomId    Int
+  chatRoom ChatRoom[]
+
   testerFinding TesterFinding[]
   cvssDetailId  Int
 }
