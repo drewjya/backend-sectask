@@ -116,9 +116,6 @@ model SubProject {
 
   project   Project @relation(fields: [projectId], references: [id])
   projectId Int
-
-  ChatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
-  chatRoomId Int?
 }
 
 model SubprojectMember {
@@ -234,9 +231,9 @@ model ChatRoom {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   chats     Chat[]
+  
 
-  subProject SubProject[]
-  Finding    Finding[]
+  finding Finding[]
 }
 
 model Chat {

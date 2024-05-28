@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SubprojectRole } from '@prisma/client';
+import { CVSS_VALUE, SubprojectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { uuid } from 'src/common/uuid';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -162,6 +162,9 @@ export class FindingService {
         subProjectId: true,
       },
     });
+    if (!finding) {
+      throw unauthorized;
+    }
     await this.authorizedEditor({
       roles: [SubprojectRole.CONSULTANT],
       subprojectId: finding.subProjectId,
@@ -201,6 +204,9 @@ export class FindingService {
         subProjectId: true,
       },
     });
+    if (!finding) {
+      throw unauthorized;
+    }
     await this.authorizedEditor({
       roles: [SubprojectRole.CONSULTANT],
       subprojectId: finding.subProjectId,
@@ -221,7 +227,68 @@ export class FindingService {
     return newFInding;
   }
 
-  editCVSS(param: { cvss: number; userId: number; findingId: number }) {}
+  async editCVSS(param: {
+    cvss: {
+      av: CVSS_VALUE;
+      ac: CVSS_VALUE;
+      at: CVSS_VALUE;
+      pr: CVSS_VALUE;
+      ui: CVSS_VALUE;
+      vc: CVSS_VALUE;
+      vi: CVSS_VALUE;
+      va: CVSS_VALUE;
+      sc: CVSS_VALUE;
+      si: CVSS_VALUE;
+      sa: CVSS_VALUE;
+      s: CVSS_VALUE;
+      au: CVSS_VALUE;
+      r: CVSS_VALUE;
+      v: CVSS_VALUE;
+      re: CVSS_VALUE;
+      u: CVSS_VALUE;
+      mav: CVSS_VALUE;
+      mac: CVSS_VALUE;
+      mat: CVSS_VALUE;
+      mpr: CVSS_VALUE;
+      mui: CVSS_VALUE;
+      mvc: CVSS_VALUE;
+      mvi: CVSS_VALUE;
+      mva: CVSS_VALUE;
+      msc: CVSS_VALUE;
+      msi: CVSS_VALUE;
+      msa: CVSS_VALUE;
+      cr: CVSS_VALUE;
+      ir: CVSS_VALUE;
+      ar: CVSS_VALUE;
+      e: CVSS_VALUE;
+    };
+    userId: number;
+    findingId: number;
+  }) {
+    const finding = await this.prisma.finding.findFirst({
+      where: { id: param.findingId },
+      select: {
+        subProjectId: true,
+        cvssDetailId: true,
+      },
+    });
+    if (!finding) {
+      throw unauthorized;
+    }
+    await this.authorizedEditor({
+      roles: [SubprojectRole.CONSULTANT],
+      subprojectId: finding.subProjectId,
+      userId: param.userId,
+    });
+    return this.prisma.cvssDetail.update({
+      where: {
+        id: finding.cvssDetailId,
+      },
+      data: {
+        ...param.cvss,
+      },
+    });
+  }
 
   async deleteFinding(param: {
     userId: number;
