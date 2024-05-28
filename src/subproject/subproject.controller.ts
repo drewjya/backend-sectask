@@ -11,7 +11,6 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 
-import { SubprojectRole } from '@prisma/client';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
 import { extractUserId } from 'src/utils/extract/userId';
@@ -21,6 +20,7 @@ import {
   UpdateHeaderDto,
 } from './request/subproject.request';
 import { SubprojectService } from './subproject.service';
+import { ProjectRole } from '@prisma/client';
 
 @Controller('subproject')
 export class SubprojectController {
@@ -119,7 +119,7 @@ export class SubprojectController {
       userId,
       file,
       originalName,
-      acceptRole: [SubprojectRole.PM, SubprojectRole.TECHNICAL_WRITER],
+      acceptRole: ProjectRole.TECHNICAL_WRITER,
       subprojectId: +id,
       type: 'report',
     });
@@ -139,7 +139,7 @@ export class SubprojectController {
       userId,
       file,
       originalName,
-      acceptRole: [SubprojectRole.PM, SubprojectRole.DEVELOPER],
+      acceptRole: ProjectRole.DEVELOPER,
       subprojectId: +id,
       type: 'attachment',
     });
@@ -157,7 +157,7 @@ export class SubprojectController {
       userId,
       fileId: +fileId,
       subprojectId: +id,
-      acceptRole: [SubprojectRole.PM, SubprojectRole.TECHNICAL_WRITER],
+      acceptRole: ProjectRole.TECHNICAL_WRITER,
     });
   }
 
@@ -173,7 +173,7 @@ export class SubprojectController {
       userId,
       fileId: +fileId,
       subprojectId: +id,
-      acceptRole: [SubprojectRole.PM, SubprojectRole.DEVELOPER],
+      acceptRole: ProjectRole.DEVELOPER,
     });
   }
 }

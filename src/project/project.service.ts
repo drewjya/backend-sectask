@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { ProjectRole, SubprojectRole } from '@prisma/client';
+import { ProjectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
@@ -24,6 +24,12 @@ export class ProjectService {
         members: {
           create: [{ role: 'PM', userId: userId }],
         },
+        owner: {
+          connect: {
+            id: userId,
+          },
+        },
+
         reports: {},
         recentActivities: {
           create: {
@@ -71,7 +77,6 @@ export class ProjectService {
             endDate: true,
             members: {
               select: {
-                role: true,
                 user: {
                   select: {
                     id: true,
@@ -193,12 +198,7 @@ export class ProjectService {
         data: 'duplicate',
       });
     }
-    let subprojectRole: SubprojectRole = SubprojectRole.VIEWER;
-    if (param.role === ProjectRole.TECHNICAL_WRITER) {
-      subprojectRole = SubprojectRole.TECHNICAL_WRITER;
-    } else if (param.role === ProjectRole.DEVELOPER) {
-      subprojectRole = SubprojectRole.DEVELOPER;
-    }
+
     const project = await this.prisma.project.update({
       where: {
         id: param.projectId,
@@ -227,28 +227,6 @@ export class ProjectService {
       description: `${user.name} has been added`,
     });
 
-    const subprojects = project.subProjects.map((subproject) => subproject);
-    for (const iterator of subprojects) {
-      await this.prisma.subProject.update({
-        where: {
-          id: iterator.id,
-        },
-        data: {
-          members: {
-            create: {
-              projectId: project.id,
-              userId: param.userId,
-              role: subprojectRole,
-            },
-          },
-        },
-      });
-      await this.projectQuery.addSubProjectRecentActivities({
-        subprojectId: iterator.id,
-        title: `Subproject ${iterator.name}`,
-        description: `${user.name} has been added`,
-      });
-    }
     return project;
   }
 
@@ -281,12 +259,7 @@ export class ProjectService {
         member: true,
       },
     });
-    await this.prisma.subprojectMember.deleteMany({
-      where: {
-        projectId: param.projectId,
-        userId: param.userId,
-      },
-    });
+
     await this.projectQuery.addProjectRecentActivities({
       projectId: projectMember.project.id,
       title: `Project ${projectMember.project.name}`,

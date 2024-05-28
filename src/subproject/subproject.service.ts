@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { ProjectRole, SubprojectRole } from '@prisma/client';
+import { ProjectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
@@ -15,78 +15,82 @@ export class SubprojectService {
   private async editSubprojectMembers(param: {
     subprojectId: number;
     userId: number;
-
+    add: boolean;
     memberId: number;
-    newRole: SubprojectRole;
   }) {
-    await this.projectQuery.checkIfSubprojectActive({
+    const subproject = await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
       userId: param.userId,
-      role: [SubprojectRole.PM],
+      role: [ProjectRole.PM],
     });
 
-    const subprojectMembers = await this.prisma.subprojectMember.findFirst({
+    const projectMembers = await this.prisma.projectMember.findFirst({
       where: {
-        subprojectId: param.subprojectId,
+        projectId: subproject.project.id,
         userId: param.memberId,
       },
       include: {
-        subproject: {
-          include: {
-            findings: {
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
+        subprojectMember: true,
       },
     });
-    if (!subprojectMembers) {
+    if (!projectMembers) {
       throw new ApiException({
         data: 'Member not found',
         status: HttpStatus.UNAUTHORIZED,
       });
     }
-    const approvedRole: SubprojectRole[] = [
-      SubprojectRole.CONSULTANT,
-      SubprojectRole.VIEWER,
-    ];
-    if (
-      !approvedRole.includes(subprojectMembers.role) ||
-      !approvedRole.includes(param.newRole)
-    ) {
+    const approvedRole: ProjectRole = ProjectRole.VIEWER;
+    if (approvedRole !== projectMembers.role) {
       throw new ApiException({
         data: 'Role not allowed',
         status: HttpStatus.UNAUTHORIZED,
       });
     }
-
-    const subproejct = await this.prisma.subprojectMember.update({
-      where: {
-        id: subprojectMembers.id,
-      },
-      data: {
-        role: param.newRole,
-      },
-      include: {
-        subproject: {
-          include: {
-            findings: {
-              select: {
-                id: true,
-              },
+    if (param.add) {
+      if (projectMembers.subprojectMember) {
+        throw new ApiException({
+          data: 'Member consultant in subproject',
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
+      await this.prisma.subprojectMember.create({
+        data: {
+          projectMember: {
+            connect: {
+              id: projectMembers.id,
+            },
+          },
+          subproject: {
+            connect: {
+              id: param.subprojectId,
+            },
+          },
+          user: {
+            connect: {
+              id: param.memberId,
             },
           },
         },
-      },
-    });
+      });
+    } else {
+      if (!projectMembers.subprojectMember) {
+        throw new ApiException({
+          data: 'Member not consultant in subproject',
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
+      await this.prisma.subprojectMember.delete({
+        where: {
+          id: projectMembers.subprojectMember.id,
+        },
+      });
+    }
     await this.projectQuery.addSubProjectRecentActivities({
       subprojectId: param.subprojectId,
-      title: `Subproject Member Updated`,
-      description: `Subproject Member has been updated by [${param.userId}]`,
+      title: `Member ${param.add ? 'Promotion' : 'Demoted'}`,
+      description: `Member has been ${param.add ? 'Promoted To Consultant' : 'Demoted To Viewer'} by [${param.userId}]`,
     });
-    return subproejct;
+    return subproject;
   }
 
   async findDetail(param: { subprojectId: number; userId: number }) {
@@ -94,11 +98,10 @@ export class SubprojectService {
       subproject: param.subprojectId,
       userId: param.userId,
       role: [
-        SubprojectRole.CONSULTANT,
-        SubprojectRole.DEVELOPER,
-        SubprojectRole.VIEWER,
-        SubprojectRole.PM,
-        SubprojectRole.TECHNICAL_WRITER,
+        ProjectRole.DEVELOPER,
+        ProjectRole.VIEWER,
+        ProjectRole.PM,
+        ProjectRole.TECHNICAL_WRITER,
       ],
     });
     return this.prisma.subProject.findFirst({
@@ -108,7 +111,6 @@ export class SubprojectService {
       include: {
         members: {
           select: {
-            role: true,
             user: {
               select: {
                 id: true,
@@ -153,24 +155,6 @@ export class SubprojectService {
       userId: param.userId,
       role: [ProjectRole.PM],
     });
-    const projectMembers = await this.prisma.projectMember.findMany({
-      where: {
-        projectId: param.projectId,
-      },
-    });
-
-    let subprojectMembers: {
-      role: SubprojectRole;
-      userId: number;
-      projectId: number;
-    }[] = [];
-    subprojectMembers = projectMembers.map((member) => {
-      return {
-        projectId: param.projectId,
-        role: member.role as SubprojectRole,
-        userId: member.userId,
-      };
-    });
     const subproject = await this.prisma.subProject.create({
       data: {
         name: param.name,
@@ -181,9 +165,6 @@ export class SubprojectService {
         },
         endDate: param.endDate,
         startDate: param.startDate,
-        members: {
-          create: subprojectMembers,
-        },
         reports: {},
         recentActivities: {
           create: {
@@ -206,7 +187,7 @@ export class SubprojectService {
     await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
       userId: param.userId,
-      role: [SubprojectRole.PM],
+      role: [ProjectRole.PM],
     });
     const subproject = await this.prisma.subProject.update({
       where: {
@@ -235,7 +216,7 @@ export class SubprojectService {
       subprojectId: param.subprojectId,
       userId: param.userId,
       memberId: param.memberId,
-      newRole: SubprojectRole.CONSULTANT,
+      add: true,
     });
   }
   async demoteToViewer(param: {
@@ -247,9 +228,9 @@ export class SubprojectService {
       subprojectId: param.subprojectId,
       userId: param.userId,
       memberId: param.memberId,
-      newRole: SubprojectRole.VIEWER,
+      add: false,
     });
-    const findingIds = result.subproject.findings.map((finding) => {
+    const findingIds = result.findings.map((finding) => {
       return finding.id;
     });
     await this.prisma.testerFinding.updateMany({
@@ -270,7 +251,7 @@ export class SubprojectService {
     await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
       userId: param.userId,
-      role: [SubprojectRole.PM],
+      role: [ProjectRole.PM],
     });
     const subproject = await this.prisma.subProject.delete({
       where: {
@@ -290,13 +271,13 @@ export class SubprojectService {
     file: Express.Multer.File;
     originalName: string;
     userId: number;
-    acceptRole: SubprojectRole[];
+    acceptRole: ProjectRole;
     type: 'attachment' | 'report';
   }) {
     await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
       userId: param.userId,
-      role: param.acceptRole,
+      role: [param.acceptRole],
     });
     if (param.type === 'attachment') {
       const attachment = await this.prisma.file.create({
@@ -335,12 +316,12 @@ export class SubprojectService {
     subprojectId: number;
     fileId: number;
     userId: number;
-    acceptRole: ProjectRole[];
+    acceptRole: ProjectRole;
   }) {
     await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
       userId: param.userId,
-      role: param.acceptRole,
+      role: [param.acceptRole],
     });
 
     const file = await this.prisma.file.findFirst({

@@ -5,7 +5,6 @@ import {
   ProjectLog,
   ProjectRole,
   SubProjectLog,
-  SubprojectRole,
 } from '@prisma/client';
 import { ApiException } from 'src/utils/exception/api.exception';
 import { forbidden, notfound } from 'src/utils/exception/common.exception';
@@ -60,7 +59,6 @@ export class ProjectQuery {
       select: {
         name: true,
         id: true,
-        
       },
     });
     return project;
@@ -116,7 +114,6 @@ export class ProjectQuery {
         id: projectId,
       },
       include: {
-        
         members: {
           select: {
             userId: true,
@@ -143,10 +140,10 @@ export class ProjectQuery {
   async checkIfSubprojectActive(params: {
     subproject: number;
     userId: number;
-    role: SubprojectRole[];
+    role: ProjectRole[];
     onSubProject?: OnSubProject;
   }) {
-    const { subproject, userId, role } = params;
+    const { subproject, userId } = params;
     const subprojectData = await this.prisma.subProject.findFirst({
       where: {
         id: subproject,
@@ -155,14 +152,10 @@ export class ProjectQuery {
         members: {
           select: {
             userId: true,
-            role: true,
           },
         },
-        project: {
-          select: {
-            archived: true,
-          },
-        },
+        project: true,
+        findings: true,
       },
     });
     if (!subprojectData) {
@@ -180,11 +173,9 @@ export class ProjectQuery {
     if (!member) {
       throw forbidden;
     }
-    if (!role.includes(member.role)) {
-      throw forbidden;
-    }
+
     params.onSubProject?.call(subprojectData);
-    return;
+    return subprojectData;
   }
 
   async addProjectRecentActivities(param: {
@@ -244,7 +235,6 @@ export class ProjectQuery {
                     members: {
                       select: {
                         userId: true,
-                        role: true,
                       },
                     },
                     name: true,

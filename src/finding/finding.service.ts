@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CVSS_VALUE, SubprojectRole } from '@prisma/client';
+import { CVSS_VALUE, ProjectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { uuid } from 'src/common/uuid';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -13,11 +13,17 @@ export class FindingService {
   }
 
   async create(param: { subprojectId: number; userId: number }) {
-    await this.projectQuery.checkIfSubprojectActive({
-      role: [SubprojectRole.CONSULTANT],
+    const subproject = await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
       userId: param.userId,
+      role: [ProjectRole.VIEWER],
     });
+    const member = subproject.members.find(
+      (member) => member.userId === param.userId,
+    );
+    if (!member) {
+      throw unauthorized;
+    }
     return this.prisma.finding.create({
       data: {
         name: 'Untitled Finding',
@@ -71,7 +77,6 @@ export class FindingService {
             members: {
               some: {
                 userId: param.userId,
-                role: SubprojectRole.CONSULTANT,
               },
             },
           },
@@ -165,7 +170,6 @@ export class FindingService {
       throw unauthorized;
     }
     await this.authorizedEditor({
-      roles: [SubprojectRole.CONSULTANT],
       subprojectId: finding.subProjectId,
       userId: param.userId,
     });
@@ -204,7 +208,6 @@ export class FindingService {
       throw unauthorized;
     }
     await this.authorizedEditor({
-      roles: [SubprojectRole.CONSULTANT],
       subprojectId: finding.subProjectId,
       userId: param.userId,
     });
@@ -240,7 +243,6 @@ export class FindingService {
       throw unauthorized;
     }
     await this.authorizedEditor({
-      roles: [SubprojectRole.CONSULTANT],
       subprojectId: finding.subProjectId,
       userId: param.userId,
     });
@@ -308,7 +310,6 @@ export class FindingService {
       throw unauthorized;
     }
     await this.authorizedEditor({
-      roles: [SubprojectRole.CONSULTANT],
       subprojectId: finding.subProjectId,
       userId: param.userId,
     });
@@ -330,7 +331,6 @@ export class FindingService {
       },
     });
     await this.authorizedEditor({
-      roles: [SubprojectRole.CONSULTANT, SubprojectRole.PM],
       subprojectId: finding.subProjectId,
       userId: param.userId,
     });
@@ -344,20 +344,69 @@ export class FindingService {
   private async authorizedEditor(param: {
     userId: number;
     subprojectId: number;
-    roles: SubprojectRole[];
+    includePm?: boolean;
   }) {
-    const subprojectMember = await this.prisma.subprojectMember.findFirst({
-      where: {
-        subprojectId: param.subprojectId,
-        userId: param.userId,
-      },
-    });
-    if (!subprojectMember) {
-      throw unauthorized;
-    }
+    if (param.includePm === true) {
+      const subproject = await this.prisma.subProject.findFirst({
+        where: {
+          id: param.subprojectId,
+        },
+        include: {
+          project: {
+            select: {
+              members: {
+                select: {
+                  userId: true,
+                  role: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      if (!subproject) {
+        throw unauthorized;
+      }
+      const member = subproject.project.members.find(
+        (member) => member.userId === param.userId,
+      );
+      if (!member) {
+        throw unauthorized;
+      }
+      if (member.role === ProjectRole.PM) {
+        return;
+      } else {
+        throw unauthorized;
+      }
+    } else {
+      const subprojectMember = await this.prisma.subprojectMember.findFirst({
+        where: {
+          subprojectId: param.subprojectId,
+          userId: param.userId,
+        },
+        include: {
+          subproject: {
+            select: {
+              project: {
+                select: {
+                  members: {
+                    select: {
+                      userId: true,
+                      role: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
 
-    if (!param.roles.includes(subprojectMember.role)) {
-      throw unauthorized;
+      if (!subprojectMember) {
+        throw unauthorized;
+      }
+
+      return;
     }
   }
 }
