@@ -152,7 +152,7 @@ export class ProjectService {
     if (!user) {
       throw notfound;
     }
-    let subprojectRole: SubprojectRole = SubprojectRole.GUEST;
+    let subprojectRole: SubprojectRole = SubprojectRole.VIEWER;
     if (param.role === ProjectRole.TECHNICAL_WRITER) {
       subprojectRole = SubprojectRole.TECHNICAL_WRITER;
     } else if (param.role === ProjectRole.DEVELOPER) {
