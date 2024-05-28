@@ -116,6 +116,7 @@ export class ProjectQuery {
         id: projectId,
       },
       include: {
+        
         members: {
           select: {
             userId: true,
@@ -137,7 +138,7 @@ export class ProjectQuery {
     }
     onProject?.call(project);
 
-    return;
+    return project;
   }
   async checkIfSubprojectActive(params: {
     subproject: number;

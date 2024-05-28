@@ -19,7 +19,11 @@ import { ProjectRole } from '@prisma/client';
 import { extractUserId } from 'src/utils/extract/userId';
 import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
 import { ProjectService } from './project.service';
-import { AddMemberDto, CreateProjectDto } from './request/project.request';
+import {
+  AddMemberDto,
+  CreateProjectDto,
+  RemoveMemberDto,
+} from './request/project.request';
 
 @Controller('project')
 export class ProjectController {
@@ -101,7 +105,6 @@ export class ProjectController {
   @Post(':id/member')
   addMember(
     @Req() req: Request,
-    @Query('email') email: string,
     @Param('id') id: string,
     @Body() body: AddMemberDto,
   ) {
@@ -118,9 +121,8 @@ export class ProjectController {
   @Delete(':id/member')
   removeMember(
     @Req() req: Request,
-    @Query('email') email: string,
     @Param('id') id: string,
-    @Body() body: AddMemberDto,
+    @Body() body: RemoveMemberDto,
   ) {
     const userId = extractUserId(req);
     return this.projectService.removeMember({
@@ -151,6 +153,32 @@ export class ProjectController {
       endDate: body.endDate,
       name: body.name,
       startDate: body.startDate,
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @UseInterceptors(uploadConfig())
+  @Post(':id/picture')
+  postImage(
+    @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
+    const userId = extractUserId(req);
+    return this.projectService.editProfileProject({
+      userId,
+      file,
+      projectId: +id,
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Delete(':id/picture')
+  deleteImage(@Req() req: any, @Param('id') id: string) {
+    const userId = extractUserId(req);
+    return this.projectService.deleteProjectProfile({
+      userId,
+      projectId: +id,
     });
   }
 

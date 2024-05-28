@@ -12,7 +12,7 @@ export class CustomPipe {
         for (const key of errors) {
           console.log(key);
 
-          if (key.children.length > 0) {
+          if (key.children && key.children.length > 0) {
             for (const child of key.children) {
               const arr = child.children.map((e) => {
                 return {

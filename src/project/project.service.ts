@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { ProjectRole, SubprojectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ApiException } from 'src/utils/exception/api.exception';
 import { notfound } from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
 import { CreateProjectDto } from './request/project.request';
@@ -43,6 +44,14 @@ export class ProjectService {
       include: {
         attachments: true,
         reports: true,
+        recentActivities: {
+          select: {
+            title: true,
+            description: true,
+            createdAt: true,
+          },
+        },
+        projectPicture: true,
         members: {
           select: {
             role: true,
@@ -167,15 +176,22 @@ export class ProjectService {
     const user = await this.prisma.user.findFirst({
       where: {
         id: param.userId,
-        projects: {
-          none: {
-            id: param.projectId,
-          },
-        },
       },
     });
     if (!user) {
       throw notfound;
+    }
+    const projectMember = await this.prisma.projectMember.findFirst({
+      where: {
+        projectId: param.projectId,
+        userId: param.userId,
+      },
+    });
+    if (projectMember) {
+      throw new ApiException({
+        status: HttpStatus.FORBIDDEN,
+        data: 'duplicate',
+      });
     }
     let subprojectRole: SubprojectRole = SubprojectRole.VIEWER;
     if (param.role === ProjectRole.TECHNICAL_WRITER) {
@@ -347,6 +363,31 @@ export class ProjectService {
     return project;
   }
 
+  async deleteProjectProfile(param: {
+    projectId: number;
+
+    userId: number;
+  }) {
+    const find = await this.projectQuery.checkIfProjectActive({
+      projectId: param.projectId,
+      userId: param.userId,
+      role: [ProjectRole.PM],
+    });
+
+    if (!find.projectPictureId) {
+      throw notfound;
+    }
+
+    const file = await this.prisma.file.delete({
+      where: {
+        id: find.projectPictureId,
+      },
+    });
+
+    unlinkFile(file.imagePath);
+    return;
+  }
+
   async uploadProjectFile(param: {
     projectId: number;
     file: Express.Multer.File;
@@ -403,6 +444,14 @@ export class ProjectService {
       role: param.acceptRole,
     });
 
+    const file = await this.prisma.file.findFirst({
+      where: {
+        id: param.fileId,
+      },
+    });
+    if (!file) {
+      throw notfound;
+    }
     const attachment = await this.prisma.file.delete({
       where: {
         id: param.fileId,
