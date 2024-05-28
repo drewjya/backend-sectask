@@ -140,7 +140,46 @@ export class SubprojectService {
     return subproject;
   }
 
-  async editSubprojectMembers(param: {
+  async promoteToConsultant(param: {
+    subprojectId: number;
+    userId: number;
+    memberId: number;
+  }) {
+    return this.editSubprojectMembers({
+      subprojectId: param.subprojectId,
+      userId: param.userId,
+      memberId: param.memberId,
+      newRole: SubprojectRole.CONSULTANT,
+    });
+  }
+  async demoteToViewer(param: {
+    subprojectId: number;
+    userId: number;
+    memberId: number;
+  }) {
+    let result = await this.editSubprojectMembers({
+      subprojectId: param.subprojectId,
+      userId: param.userId,
+      memberId: param.memberId,
+      newRole: SubprojectRole.CONSULTANT,
+    });
+    const findingIds = result.subproject.findings.map((finding) => {
+      return finding.id;
+    });
+    await this.prisma.testerFinding.updateMany({
+      where: {
+        findingId: {
+          in: findingIds,
+        },
+        userId: param.memberId,
+      },
+      data: {
+        active: false,
+      },
+    });
+  }
+
+  private async editSubprojectMembers(param: {
     subprojectId: number;
     userId: number;
 
@@ -157,6 +196,17 @@ export class SubprojectService {
       where: {
         subprojectId: param.subprojectId,
         userId: param.memberId,
+      },
+      include: {
+        subproject: {
+          include: {
+            findings: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
       },
     });
     if (!subprojectMembers) {

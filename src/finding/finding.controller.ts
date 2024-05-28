@@ -9,7 +9,7 @@ export class FindingController {
 
   @Post()
   create(@Body() createFindingDto: CreateFindingDto) {
-    return this.findingService.create(createFindingDto);
+    // return this.findingService.create(createFindingDto, 1);
   }
 
   @Get()

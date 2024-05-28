@@ -27,6 +27,7 @@ model User {
   subProjects      SubprojectMember[]
   chat             Chat[]
   Finding          Finding[]
+  TesterFinding    TesterFinding[]
 }
 
 model File {
@@ -149,7 +150,10 @@ model Finding {
 
   latestUpdate DateTime?
 
-  cvssDetail CVSS_VALUE
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  deletedAt  DateTime?
+  cvssDetail CvssDetail @relation(fields: [cvssDetailId], references: [id])
   status     String?
   releases   String?
 
@@ -159,68 +163,70 @@ model Finding {
   threatAndRiskId String
   threatAndRisk   Document @relation("findingThreatAndRisk", fields: [threatAndRiskId], references: [id])
 
-  businessImpactId String
-  businessImpact   Document @relation("findingBusinessImpact", fields: [businessImpactId], references: [id])
-
-  recommendationId String
-  recommendation   Document @relation("findingRecommendation", fields: [recommendationId], references: [id])
-
-  retestResultId String
-  retestResult   Document @relation("findingRetestResult", fields: [retestResultId], references: [id])
-
   subProject   SubProject @relation(fields: [subProjectId], references: [id])
   subProjectId Int
   userId       Int
 
-  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
-  chatRoomId Int
+  chatRoom      ChatRoom        @relation(fields: [chatRoomId], references: [id])
+  chatRoomId    Int
+  testerFinding TesterFinding[]
+  cvssDetailId  Int
+}
+
+model TesterFinding {
+  id        Int     @id @default(autoincrement())
+  user      User    @relation(fields: [userId], references: [id])
+  finding   Finding @relation(fields: [findingId], references: [id])
+  userId    Int
+  findingId Int
+  active    Boolean @default(true)
+
+  @@unique([userId, findingId])
 }
 
 model Document {
   id   String @id
   data Bytes
 
-  findingDescription    Finding[] @relation("findingDescription")
-  findingThreatAndRisk  Finding[] @relation("findingThreatAndRisk")
-  findingBusinessImpact Finding[] @relation("findingBusinessImpact")
-  findingRecommendation Finding[] @relation("findingRecommendation")
-  findingRetestResult   Finding[] @relation("findingRetestResult")
+  findingDescription   Finding[] @relation("findingDescription")
+  findingThreatAndRisk Finding[] @relation("findingThreatAndRisk")
 }
 
 model CvssDetail {
-  id  Int        @id @default(autoincrement())
-  av  CVSS_VALUE @default(C0)
-  ac  CVSS_VALUE @default(C0)
-  at  CVSS_VALUE @default(C0)
-  pr  CVSS_VALUE @default(C0)
-  ui  CVSS_VALUE @default(C0)
-  vc  CVSS_VALUE @default(C2)
-  vi  CVSS_VALUE @default(C2)
-  va  CVSS_VALUE @default(C2)
-  sc  CVSS_VALUE @default(C2)
-  si  CVSS_VALUE @default(C2)
-  sa  CVSS_VALUE @default(C2)
-  s   CVSS_VALUE @default(C0)
-  au  CVSS_VALUE @default(C0)
-  r   CVSS_VALUE @default(C0)
-  v   CVSS_VALUE @default(C0)
-  re  CVSS_VALUE @default(C0)
-  u   CVSS_VALUE @default(C0)
-  mav CVSS_VALUE @default(C0)
-  mac CVSS_VALUE @default(C0)
-  mat CVSS_VALUE @default(C0)
-  mpr CVSS_VALUE @default(C0)
-  mui CVSS_VALUE @default(C0)
-  mvc CVSS_VALUE @default(C0)
-  mvi CVSS_VALUE @default(C0)
-  mva CVSS_VALUE @default(C0)
-  msc CVSS_VALUE @default(C0)
-  msi CVSS_VALUE @default(C0)
-  msa CVSS_VALUE @default(C0)
-  cr  CVSS_VALUE @default(C0)
-  ir  CVSS_VALUE @default(C0)
-  ar  CVSS_VALUE @default(C0)
-  e   CVSS_VALUE @default(C0)
+  id      Int        @id @default(autoincrement())
+  av      CVSS_VALUE @default(C0)
+  ac      CVSS_VALUE @default(C0)
+  at      CVSS_VALUE @default(C0)
+  pr      CVSS_VALUE @default(C0)
+  ui      CVSS_VALUE @default(C0)
+  vc      CVSS_VALUE @default(C2)
+  vi      CVSS_VALUE @default(C2)
+  va      CVSS_VALUE @default(C2)
+  sc      CVSS_VALUE @default(C2)
+  si      CVSS_VALUE @default(C2)
+  sa      CVSS_VALUE @default(C2)
+  s       CVSS_VALUE @default(C0)
+  au      CVSS_VALUE @default(C0)
+  r       CVSS_VALUE @default(C0)
+  v       CVSS_VALUE @default(C0)
+  re      CVSS_VALUE @default(C0)
+  u       CVSS_VALUE @default(C0)
+  mav     CVSS_VALUE @default(C0)
+  mac     CVSS_VALUE @default(C0)
+  mat     CVSS_VALUE @default(C0)
+  mpr     CVSS_VALUE @default(C0)
+  mui     CVSS_VALUE @default(C0)
+  mvc     CVSS_VALUE @default(C0)
+  mvi     CVSS_VALUE @default(C0)
+  mva     CVSS_VALUE @default(C0)
+  msc     CVSS_VALUE @default(C0)
+  msi     CVSS_VALUE @default(C0)
+  msa     CVSS_VALUE @default(C0)
+  cr      CVSS_VALUE @default(C0)
+  ir      CVSS_VALUE @default(C0)
+  ar      CVSS_VALUE @default(C0)
+  e       CVSS_VALUE @default(C0)
+  Finding Finding[]
 }
 
 model ChatRoom {

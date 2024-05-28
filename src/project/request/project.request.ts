@@ -37,7 +37,7 @@ export class AddMemberDto {
 
   @IsEnum(ProjectRole)
   @ApiProperty()
-  @NotEquals(ProjectRole.OWNER)
+  @NotEquals(ProjectRole.PM)
   role: ProjectRole;
 }
 

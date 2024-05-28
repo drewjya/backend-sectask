@@ -1,1 +1,5 @@
-export class CreateFindingDto {}
+export class CreateFindingDto {
+
+    
+    subprojectId: number;
+}
