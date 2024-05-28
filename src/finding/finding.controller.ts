@@ -1,34 +1,107 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { Request } from 'express';
+import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
+import { extractUserId } from 'src/utils/extract/userId';
+import {
+  EditCVSSProp,
+  EditFProp,
+  EditResetsProp,
+} from './dto/create-finding.dto';
 import { FindingService } from './finding.service';
-import { CreateFindingDto } from './dto/create-finding.dto';
-import { UpdateFindingDto } from './dto/update-finding.dto';
 
 @Controller('finding')
 export class FindingController {
   constructor(private readonly findingService: FindingService) {}
 
-  @Post()
-  create(@Body() createFindingDto: CreateFindingDto) {
-    // return this.findingService.create(createFindingDto, 1);
+  @UseGuards(AccessTokenGuard)
+  @Post('new/:subprojectId')
+  create(@Param('subprojectId') subprojectId: string, @Req() req: Request) {
+    const userId = extractUserId(req);
+    return this.findingService.create({
+      subprojectId: +subprojectId,
+      userId: userId,
+    });
   }
 
-  @Get()
-  findAll() {
-    return this.findingService.findAll();
+  @UseGuards(AccessTokenGuard)
+  @Post('notify/:id')
+  notifyEdit(@Param('id') id: string, @Req() req: Request) {
+    const userId = extractUserId(req);
+    return this.findingService.notifyEdit({
+      findingId: +id,
+      userId: userId,
+    });
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.findingService.findOne(+id);
+  @UseGuards(AccessTokenGuard)
+  @Post('fprop/:id')
+  editFindingProp(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() param: EditFProp,
+  ) {
+    const userId = extractUserId(req);
+    return this.findingService.editFindingProperties({
+      findingId: +id,
+      userId: userId,
+      properties: param,
+    });
+  }
+  @UseGuards(AccessTokenGuard)
+  @Post('retest/:id')
+  editResetsProp(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() param: EditResetsProp,
+  ) {
+    const userId = extractUserId(req);
+    return this.findingService.editRetestProperties({
+      findingId: +id,
+      userId: userId,
+      properties: param,
+    });
+  }
+  @UseGuards(AccessTokenGuard)
+  @Post('cvss/:id')
+  editCVSS(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() param: EditCVSSProp,
+  ) {
+    const userId = extractUserId(req);
+    return this.findingService.editCVSS({
+      findingId: +id,
+      userId: userId,
+      cvss: param,
+    });
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateFindingDto: UpdateFindingDto) {
-    return this.findingService.update(+id, updateFindingDto);
-  }
-
+  @UseGuards(AccessTokenGuard)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.findingService.remove(+id);
+  delete(@Param('id') id: string, @Req() req: Request) {
+    const userId = extractUserId(req);
+    return this.findingService.deleteFinding({
+      findingId: +id,
+      userId: userId,
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get(':id')
+  findOne(@Param('id') id: string, @Req() req: Request) {
+    const userId = extractUserId(req);
+    return this.findingService.findDetail({
+      findingId: +id,
+      userId: userId,
+    });
   }
 }

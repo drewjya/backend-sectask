@@ -4,7 +4,6 @@ import { ProjectQuery } from 'src/common/query/project.query';
 import { uuid } from 'src/common/uuid';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { unauthorized } from 'src/utils/exception/common.exception';
-import { UpdateFindingDto } from './dto/update-finding.dto';
 
 @Injectable()
 export class FindingService {
@@ -145,13 +144,13 @@ export class FindingService {
 
   async editFindingProperties(param: {
     properties: {
-      category: string;
-      location: string;
-      method: string;
-      environment: string;
-      application: string;
-      impact: string;
-      likelihood: string;
+      category?: string;
+      location?: string;
+      method?: string;
+      environment?: string;
+      application?: string;
+      impact?: string;
+      likelihood?: string;
     };
     userId: number;
     findingId: number;
@@ -190,10 +189,10 @@ export class FindingService {
 
   async editRetestProperties(param: {
     properties: {
-      latestUpdate: Date;
-      tester: string;
-      status: string;
-      releases: string;
+      latestUpdate?: Date;
+      // tester?: string;
+      status?: string;
+      releases?: string;
     };
     userId: number;
     findingId: number;
@@ -290,14 +289,16 @@ export class FindingService {
     });
   }
 
-  async deleteFinding(param: {
-    userId: number;
-    findingId: number;
-    subprojectId: number;
-  }) {
+  async deleteFinding(param: { userId: number; findingId: number }) {
+    const finding = await this.prisma.finding.findFirst({
+      where: { id: param.findingId },
+      select: {
+        subProjectId: true,
+      },
+    });
     await this.authorizedEditor({
       roles: [SubprojectRole.CONSULTANT, SubprojectRole.PM],
-      subprojectId: param.subprojectId,
+      subprojectId: finding.subProjectId,
       userId: param.userId,
     });
     return this.prisma.finding.delete({
@@ -325,17 +326,5 @@ export class FindingService {
     if (!param.roles.includes(subprojectMember.role)) {
       throw unauthorized;
     }
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} finding`;
-  }
-
-  update(id: number, updateFindingDto: UpdateFindingDto) {
-    return `This action updates a #${id} finding`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} finding`;
   }
 }
