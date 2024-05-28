@@ -37,4 +37,6 @@ export class AuthController {
     const userId = extractUserId(req);
     return this.authService.refresh(userId);
   }
+
+  
 }

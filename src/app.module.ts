@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { EventModule } from './event/event.module';
@@ -11,6 +13,13 @@ import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: process.env.STATIC_PATH,
+      serveRoot: '/img',
+      serveStaticOptions: {},
+      exclude: ['/api/*'],
+    }),
+    ConfigModule.forRoot({ cache: true, isGlobal: true }),
     PrismaModule,
     UserModule,
     FindingModule,

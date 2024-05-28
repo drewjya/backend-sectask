@@ -7,12 +7,17 @@ import {
   Post,
   Query,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
+
+import { ProjectRole } from '@prisma/client';
 import { extractUserId } from 'src/utils/extract/userId';
+import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
 import { ProjectService } from './project.service';
 import { AddMemberDto, CreateProjectDto } from './request/project.request';
 
@@ -147,6 +152,78 @@ export class ProjectController {
       endDate: body.endDate,
       name: body.name,
       startDate: body.startDate,
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @UseInterceptors(uploadConfig())
+  @Post(':id/report/add')
+  postReport(
+    @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
+    const userId = extractUserId(req);
+    const originalName = req.body.originalName;
+    return this.projectService.uploadProjectFile({
+      userId,
+      file,
+      originalName,
+      acceptRole: [ProjectRole.PM, ProjectRole.TECHNICAL_WRITER],
+      projectId: +id,
+      type: 'report',
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @UseInterceptors(uploadConfig())
+  @Post(':id/attachment/add')
+  postAttachment(
+    @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
+    const userId = extractUserId(req);
+    const originalName = req.body.originalName;
+    return this.projectService.uploadProjectFile({
+      userId,
+      file,
+      originalName,
+      acceptRole: [ProjectRole.PM, ProjectRole.DEVELOPER],
+      projectId: +id,
+      type: 'attachment',
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post(':id/report/remove/:fileId')
+  removeReport(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+  ) {
+    const userId = extractUserId(req);
+    return this.projectService.removeProjectFile({
+      userId,
+      fileId: +fileId,
+      projectId: +id,
+      acceptRole: [ProjectRole.PM, ProjectRole.TECHNICAL_WRITER],
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post(':id/attachment/remove/:fileId')
+  removeAttachment(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+  ) {
+    const userId = extractUserId(req);
+    return this.projectService.removeProjectFile({
+      userId,
+      fileId: +fileId,
+      projectId: +id,
+      acceptRole: [ProjectRole.PM, ProjectRole.DEVELOPER],
     });
   }
 }

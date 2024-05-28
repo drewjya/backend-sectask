@@ -319,4 +319,94 @@ export class ProjectService {
       },
     });
   }
+
+  async editProfileProject(param: {
+    projectId: number;
+    file: Express.Multer.File;
+
+    userId: number;
+  }) {
+    await this.projectQuery.checkIfProjectActive({
+      projectId: param.projectId,
+      userId: param.userId,
+      role: [ProjectRole.PM],
+    });
+    const project = await this.prisma.file.create({
+      data: {
+        name: param.file.originalname,
+        contentType: param.file.mimetype,
+        imagePath: param.file.path,
+        project: {
+          connect: {
+            id: param.projectId,
+          },
+        },
+      },
+    });
+    return project;
+  }
+
+  async uploadProjectFile(param: {
+    projectId: number;
+    file: Express.Multer.File;
+    originalName: string;
+    userId: number;
+    acceptRole: ProjectRole[];
+    type: 'attachment' | 'report';
+  }) {
+    await this.projectQuery.checkIfProjectActive({
+      projectId: param.projectId,
+      userId: param.userId,
+      role: param.acceptRole,
+    });
+    if (param.type === 'attachment') {
+      const attachment = await this.prisma.file.create({
+        data: {
+          name: param.originalName,
+          contentType: param.file.mimetype,
+          imagePath: param.file.path,
+          projectAttachments: {
+            connect: {
+              id: param.projectId,
+            },
+          },
+        },
+      });
+      return attachment;
+    } else {
+      const attachment = await this.prisma.file.create({
+        data: {
+          name: param.originalName,
+          contentType: param.file.mimetype,
+          imagePath: param.file.path,
+          projectReports: {
+            connect: {
+              id: param.projectId,
+            },
+          },
+        },
+      });
+      return attachment;
+    }
+  }
+
+  async removeProjectFile(param: {
+    projectId: number;
+    fileId: number;
+    userId: number;
+    acceptRole: ProjectRole[];
+  }) {
+    await this.projectQuery.checkIfProjectActive({
+      projectId: param.projectId,
+      userId: param.userId,
+      role: param.acceptRole,
+    });
+
+    const attachment = await this.prisma.file.delete({
+      where: {
+        id: param.fileId,
+      },
+    });
+    return attachment;
+  }
 }

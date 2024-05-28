@@ -231,7 +231,6 @@ model ChatRoom {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   chats     Chat[]
-  
 
   finding Finding[]
 }
@@ -249,16 +248,6 @@ model Chat {
   userId     Int
   chatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
   chatRoomId Int?
-}
-
-enum EntryType {
-  PICTURE
-  FILE
-  STRING
-  NUMBER
-  DROPDOWN
-  CHECKBOX
-  DATE
 }
 
 enum CVSS_VALUE {

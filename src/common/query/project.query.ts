@@ -1,12 +1,12 @@
 import { HttpStatus } from '@nestjs/common';
 import {
+  PrismaClient,
   Project,
   ProjectLog,
   ProjectRole,
   SubProjectLog,
   SubprojectRole,
 } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
 import { forbidden, notfound } from 'src/utils/exception/common.exception';
 type OnProject = (value: Project) => void;
@@ -31,7 +31,7 @@ export interface SubprojectLogRes extends SubProjectLog {
 }
 
 export class ProjectQuery {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaClient) {}
 
   async getProjectByStatus(params: { userId: number; active: boolean }) {
     const project = await this.prisma.project.findMany({
