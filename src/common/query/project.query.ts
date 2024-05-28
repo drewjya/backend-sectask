@@ -1,8 +1,11 @@
 import { HttpStatus } from '@nestjs/common';
 import {
   Project,
+  ProjectLog,
   ProjectRole,
-  RecentActivities,
+  
+  SubProjectLog,
+  
   SubprojectRole,
 } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -19,7 +22,12 @@ enum DocType {
   SUBPROJECT = 'SUBPROJECT',
   FINDING = 'FINDING',
 }
-export interface RecentActivitiesRes extends RecentActivities {
+export interface ProjectLogRes extends ProjectLog {
+  documentId: number;
+  type: DocType;
+}
+
+export interface SubprojectLogRes extends SubProjectLog {
   documentId: number;
   type: DocType;
 }
@@ -123,18 +131,38 @@ export class ProjectQuery {
     return;
   }
 
-  async updateRecentActivities(param: {
+  async addProjectRecentActivities(param: {
     title?: string;
     description: string;
-    recentActivitiesId: number;
+    projectId: number;
   }) {
-    return await this.prisma.recentActivities.update({
-      where: {
-        id: param.recentActivitiesId,
-      },
+    return await this.prisma.projectLog.create({
       data: {
         title: param.title,
         description: param.description,
+        project: {
+          connect: {
+            id: param.projectId,
+          },
+        },
+      },
+    });
+  }
+
+  async addSubProjectRecentActivities(param: {
+    title?: string;
+    description: string;
+    subprojectId: number;
+  }) {
+    return await this.prisma.subProjectLog.create({
+      data: {
+        title: param.title,
+        description: param.description,
+        subproject: {
+          connect: {
+            id: param.subprojectId,
+          },
+        },
       },
     });
   }
@@ -165,13 +193,6 @@ export class ProjectQuery {
                     },
                     name: true,
                     recentActivities: true,
-                    findings: {
-                      select: {
-                        id: true,
-                        name: true,
-                        recentActivities: true,
-                      },
-                    },
                   },
                 },
               },
@@ -180,50 +201,24 @@ export class ProjectQuery {
         },
       },
     });
-    let activities: RecentActivitiesRes[] = [];
+    let activities: ProjectLogRes[] = [];
     recentActivities.projects.forEach(({ project, role }) => {
-      activities.push({
-        ...project.recentActivities,
-        documentId: project.id,
-        type: DocType.PROJECT,
+      project.recentActivities.forEach((e) => {
+        activities.push({
+          ...e,
+          documentId: project.id,
+          type: DocType.PROJECT,
+        });
       });
       if (role !== ProjectRole.VIEWER) {
         project.subProjects.forEach((subProject) => {
-          activities.push({
-            ...subProject.recentActivities,
-            documentId: subProject.id,
-            type: DocType.SUBPROJECT,
-          });
-          subProject.findings.forEach((finding) => {
+          subProject.recentActivities.forEach((e) => {
             activities.push({
-              ...finding.recentActivities,
-              documentId: finding.id,
-              type: DocType.FINDING,
-            });
-          });
-        });
-      } else {
-        project.subProjects.forEach((subProject) => {
-          const subprojectMember = subProject.members.find(
-            (member) => member.userId === userId,
-          );
-          if (
-            subprojectMember &&
-            subprojectMember.role === SubprojectRole.CONSULTANT
-          ) {
-            activities.push({
-              ...subProject.recentActivities,
+              ...e,
               documentId: subProject.id,
               type: DocType.SUBPROJECT,
             });
-            subProject.findings.forEach((finding) => {
-              activities.push({
-                ...finding.recentActivities,
-                documentId: finding.id,
-                type: DocType.FINDING,
-              });
-            });
-          }
+          });
         });
       }
     });

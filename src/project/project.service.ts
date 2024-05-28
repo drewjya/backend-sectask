@@ -105,8 +105,8 @@ export class ProjectService {
         archived: true,
       },
     });
-    await this.projectQuery.updateRecentActivities({
-      recentActivitiesId: project.recentActivitiesId,
+    await this.projectQuery.addProjectRecentActivities({
+      projectId: project.id,
       title: `Project ${project.name}`,
       description: 'Project has been archived',
     });
@@ -175,13 +175,13 @@ export class ProjectService {
           select: {
             name: true,
             id: true,
-            recentActivitiesId: true,
+            recentActivities: true,
           },
         },
       },
     });
-    await this.projectQuery.updateRecentActivities({
-      recentActivitiesId: project.recentActivitiesId,
+    await this.projectQuery.addProjectRecentActivities({
+      projectId: project.id,
       title: `Project ${project.name}`,
       description: `${user.name} has been added`,
     });
@@ -201,8 +201,8 @@ export class ProjectService {
           },
         },
       });
-      await this.projectQuery.updateRecentActivities({
-        recentActivitiesId: iterator.recentActivitiesId,
+      await this.projectQuery.addSubProjectRecentActivities({
+        subprojectId: iterator.id,
         title: `Subproject ${iterator.name}`,
         description: `${user.name} has been added`,
       });
@@ -231,15 +231,17 @@ export class ProjectService {
       select: {
         project: {
           select: {
-            recentActivitiesId: true,
+            id: true,
+            name: true,
             subProjects: true,
           },
         },
         member: true,
       },
     });
-    await this.projectQuery.updateRecentActivities({
-      recentActivitiesId: projectMember.project.recentActivitiesId,
+    await this.projectQuery.addProjectRecentActivities({
+      projectId: projectMember.project.id,
+      title: `Project ${projectMember.project.name}`,
       description: `${projectMember.member.name} has been removed`,
     });
 
@@ -253,8 +255,9 @@ export class ProjectService {
           },
         },
       });
-      await this.projectQuery.updateRecentActivities({
-        recentActivitiesId: iterator.recentActivitiesId,
+      await this.projectQuery.addSubProjectRecentActivities({
+        subprojectId: iterator.id,
+        title: `Subproject ${iterator.name}`,
         description: `${projectMember.member.name} has been removed`,
       });
     }
