@@ -180,8 +180,6 @@ export class ProjectQuery {
     const member = subprojectData.project.members.find(
       (member) => member.userId === userId && params.role.includes(member.role),
     );
-    console.log(member);
-
     if (!member) {
       throw forbidden;
     }
