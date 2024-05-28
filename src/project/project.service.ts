@@ -3,6 +3,7 @@ import { ProjectRole, SubprojectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { notfound } from 'src/utils/exception/common.exception';
+import { unlinkFile } from 'src/utils/pipe/file.pipe';
 import { CreateProjectDto } from './request/project.request';
 
 @Injectable()
@@ -91,7 +92,7 @@ export class ProjectService {
   }
 
   findSidebarProject(userId: number) {
-    return this.projectQuery.getProjectByStatus({ userId, active: true });
+    return this.projectQuery.getProjectSidebar({ userId, active: true });
   }
 
   findSidebarSubProject(userId: number, projectId: number) {
@@ -407,6 +408,8 @@ export class ProjectService {
         id: param.fileId,
       },
     });
+
+    unlinkFile(attachment.imagePath);
     return attachment;
   }
 }

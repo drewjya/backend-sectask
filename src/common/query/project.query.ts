@@ -47,6 +47,25 @@ export class ProjectQuery {
     return project;
   }
 
+  async getProjectSidebar(params: { userId: number; active: boolean }) {
+    const project = await this.prisma.project.findMany({
+      where: {
+        members: {
+          some: {
+            userId: params.userId,
+          },
+        },
+        archived: !params.active,
+      },
+      select: {
+        name: true,
+        id: true,
+        
+      },
+    });
+    return project;
+  }
+
   async getSubprojectSidebar(params: { userId: number; projectId: number }) {
     const subprojects = await this.prisma.subProject.findMany({
       where: {

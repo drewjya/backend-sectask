@@ -28,7 +28,6 @@ export class ProjectController {
   @Post('new')
   create(@Body() createProjectDto: CreateProjectDto, @Req() req: Request) {
     const userId = extractUserId(req);
-    console.log(userId);
     return this.projectService.create(createProjectDto, userId);
   }
 
