@@ -6,12 +6,16 @@ import {
   Param,
   Post,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
+import { SubprojectRole } from '@prisma/client';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
 import { extractUserId } from 'src/utils/extract/userId';
+import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
 import {
   CreateSubProjectDto,
   UpdateHeaderDto,
@@ -88,7 +92,7 @@ export class SubprojectController {
   }
 
   @UseGuards(AccessTokenGuard)
-  @Delete(':id/viewer/:memberId')
+  @Post(':id/viewer/:memberId')
   demoteToViewer(
     @Param('id') id: string,
     @Param('memberId') memberId: string,
@@ -99,6 +103,77 @@ export class SubprojectController {
       subprojectId: +id,
       userId: userId,
       memberId: +memberId,
+    });
+  }
+  @UseGuards(AccessTokenGuard)
+  @UseInterceptors(uploadConfig())
+  @Post(':id/report/add')
+  postReport(
+    @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
+    const userId = extractUserId(req);
+    const originalName = req.body.originalName;
+    return this.subprojectService.uploadProjectFile({
+      userId,
+      file,
+      originalName,
+      acceptRole: [SubprojectRole.PM, SubprojectRole.TECHNICAL_WRITER],
+      subprojectId: +id,
+      type: 'report',
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @UseInterceptors(uploadConfig())
+  @Post(':id/attachment/add')
+  postAttachment(
+    @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
+    @Req() req: any,
+    @Param('id') id: string,
+  ) {
+    const userId = extractUserId(req);
+    const originalName = req.body.originalName;
+    return this.subprojectService.uploadProjectFile({
+      userId,
+      file,
+      originalName,
+      acceptRole: [SubprojectRole.PM, SubprojectRole.DEVELOPER],
+      subprojectId: +id,
+      type: 'attachment',
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post(':id/report/remove/:fileId')
+  removeReport(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+  ) {
+    const userId = extractUserId(req);
+    return this.subprojectService.removeProjectFile({
+      userId,
+      fileId: +fileId,
+      subprojectId: +id,
+      acceptRole: [SubprojectRole.PM, SubprojectRole.TECHNICAL_WRITER],
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post(':id/attachment/remove/:fileId')
+  removeAttachment(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+  ) {
+    const userId = extractUserId(req);
+    return this.subprojectService.removeProjectFile({
+      userId,
+      fileId: +fileId,
+      subprojectId: +id,
+      acceptRole: [SubprojectRole.PM, SubprojectRole.DEVELOPER],
     });
   }
 }

@@ -3,6 +3,8 @@ import { ProjectRole, SubprojectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
+import { notfound } from 'src/utils/exception/common.exception';
+import { unlinkFile } from 'src/utils/pipe/file.pipe';
 
 @Injectable()
 export class SubprojectService {
@@ -60,12 +62,23 @@ export class SubprojectService {
       });
     }
 
-    await this.prisma.subprojectMember.update({
+    const subproejct = await this.prisma.subprojectMember.update({
       where: {
         id: subprojectMembers.id,
       },
       data: {
         role: param.newRole,
+      },
+      include: {
+        subproject: {
+          include: {
+            findings: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
       },
     });
     await this.projectQuery.addSubProjectRecentActivities({
@@ -73,7 +86,7 @@ export class SubprojectService {
       title: `Subproject Member Updated`,
       description: `Subproject Member has been updated by [${param.userId}]`,
     });
-    return subprojectMembers;
+    return subproejct;
   }
 
   async findDetail(param: { subprojectId: number; userId: number }) {
@@ -227,7 +240,7 @@ export class SubprojectService {
       subprojectId: param.subprojectId,
       userId: param.userId,
       memberId: param.memberId,
-      newRole: SubprojectRole.CONSULTANT,
+      newRole: SubprojectRole.VIEWER,
     });
     const findingIds = result.subproject.findings.map((finding) => {
       return finding.id;
@@ -243,6 +256,7 @@ export class SubprojectService {
         active: false,
       },
     });
+    return result;
   }
 
   async deleteSubproject(param: { subprojectId: number; userId: number }) {
@@ -264,5 +278,80 @@ export class SubprojectService {
     return subproject;
   }
 
-  
+
+  async uploadProjectFile(param: {
+    subprojectId: number;
+    file: Express.Multer.File;
+    originalName: string;
+    userId: number;
+    acceptRole: SubprojectRole[];
+    type: 'attachment' | 'report';
+  }) {
+    await this.projectQuery.checkIfSubprojectActive({
+      subproject: param.subprojectId,
+      userId: param.userId,
+      role: param.acceptRole,
+    });
+    if (param.type === 'attachment') {
+      const attachment = await this.prisma.file.create({
+        data: {
+          name: param.file.filename,
+          originalName: param.originalName,
+          contentType: param.file.mimetype,
+          imagePath: param.file.path,
+          subProjectAttachments: {
+            connect: {
+              id: param.subprojectId,
+            },
+          },
+        },
+      });
+      return attachment;
+    } else {
+      const attachment = await this.prisma.file.create({
+        data: {
+          name: param.file.filename,
+          originalName: param.originalName,
+          contentType: param.file.mimetype,
+          imagePath: param.file.path,
+          projectReports: {
+            connect: {
+              id: param.subprojectId,
+            },
+          },
+        },
+      });
+      return attachment;
+    }
+  }
+
+  async removeProjectFile(param: {
+    subprojectId: number;
+    fileId: number;
+    userId: number;
+    acceptRole: ProjectRole[];
+  }) {
+    await this.projectQuery.checkIfSubprojectActive({
+      subproject: param.subprojectId,
+      userId: param.userId,
+      role: param.acceptRole,
+    });
+
+    const file = await this.prisma.file.findFirst({
+      where: {
+        id: param.fileId,
+      },
+    });
+    if (!file) {
+      throw notfound;
+    }
+    const attachment = await this.prisma.file.delete({
+      where: {
+        id: param.fileId,
+      },
+    });
+
+    unlinkFile(attachment.imagePath);
+    return attachment;
+  }
 }
