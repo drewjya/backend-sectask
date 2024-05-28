@@ -10,6 +10,72 @@ export class SubprojectService {
   constructor(private prisma: PrismaService) {
     this.projectQuery = new ProjectQuery(prisma);
   }
+  private async editSubprojectMembers(param: {
+    subprojectId: number;
+    userId: number;
+
+    memberId: number;
+    newRole: SubprojectRole;
+  }) {
+    await this.projectQuery.checkIfSubprojectActive({
+      subproject: param.subprojectId,
+      userId: param.userId,
+      role: [SubprojectRole.PM],
+    });
+
+    const subprojectMembers = await this.prisma.subprojectMember.findFirst({
+      where: {
+        subprojectId: param.subprojectId,
+        userId: param.memberId,
+      },
+      include: {
+        subproject: {
+          include: {
+            findings: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!subprojectMembers) {
+      throw new ApiException({
+        data: 'Member not found',
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    }
+    const approvedRole: SubprojectRole[] = [
+      SubprojectRole.CONSULTANT,
+      SubprojectRole.VIEWER,
+    ];
+    if (
+      !approvedRole.includes(subprojectMembers.role) ||
+      !approvedRole.includes(param.newRole)
+    ) {
+      throw new ApiException({
+        data: 'Role not allowed',
+        status: HttpStatus.UNAUTHORIZED,
+      });
+    }
+
+    await this.prisma.subprojectMember.update({
+      where: {
+        id: subprojectMembers.id,
+      },
+      data: {
+        role: param.newRole,
+      },
+    });
+    await this.projectQuery.addSubProjectRecentActivities({
+      subprojectId: param.subprojectId,
+      title: `Subproject Member Updated`,
+      description: `Subproject Member has been updated by [${param.userId}]`,
+    });
+    return subprojectMembers;
+  }
+
   async findDetail(param: { subprojectId: number; userId: number }) {
     await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
@@ -179,72 +245,6 @@ export class SubprojectService {
     });
   }
 
-  private async editSubprojectMembers(param: {
-    subprojectId: number;
-    userId: number;
-
-    memberId: number;
-    newRole: SubprojectRole;
-  }) {
-    await this.projectQuery.checkIfSubprojectActive({
-      subproject: param.subprojectId,
-      userId: param.userId,
-      role: [SubprojectRole.PM],
-    });
-
-    const subprojectMembers = await this.prisma.subprojectMember.findFirst({
-      where: {
-        subprojectId: param.subprojectId,
-        userId: param.memberId,
-      },
-      include: {
-        subproject: {
-          include: {
-            findings: {
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
-      },
-    });
-    if (!subprojectMembers) {
-      throw new ApiException({
-        data: 'Member not found',
-        status: HttpStatus.UNAUTHORIZED,
-      });
-    }
-    const approvedRole: SubprojectRole[] = [
-      SubprojectRole.CONSULTANT,
-      SubprojectRole.VIEWER,
-    ];
-    if (
-      !approvedRole.includes(subprojectMembers.role) ||
-      !approvedRole.includes(param.newRole)
-    ) {
-      throw new ApiException({
-        data: 'Role not allowed',
-        status: HttpStatus.UNAUTHORIZED,
-      });
-    }
-
-    await this.prisma.subprojectMember.update({
-      where: {
-        id: subprojectMembers.id,
-      },
-      data: {
-        role: param.newRole,
-      },
-    });
-    await this.projectQuery.addSubProjectRecentActivities({
-      subprojectId: param.subprojectId,
-      title: `Subproject Member Updated`,
-      description: `Subproject Member has been updated by [${param.userId}]`,
-    });
-    return subprojectMembers;
-  }
-
   async deleteSubproject(param: { subprojectId: number; userId: number }) {
     await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
@@ -263,4 +263,6 @@ export class SubprojectService {
     });
     return subproject;
   }
+
+  
 }

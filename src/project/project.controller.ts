@@ -48,6 +48,25 @@ export class ProjectController {
   }
 
   @UseGuards(AccessTokenGuard)
+  @Get('sidebar/subproject/:subprojectId')
+  getSidebarFinding(
+    @Req() req: Request,
+    @Param('subprojectId') subprojectId: string,
+  ) {
+    const userId = extractUserId(req);
+    return this.projectService.findSidebarFInding(userId, +subprojectId);
+  }
+  @UseGuards(AccessTokenGuard)
+  @Get('sidebar/:projectId')
+  getSidebarSubproject(
+    @Req() req: Request,
+    @Param('projectId') projectId: string,
+  ) {
+    const userId = extractUserId(req);
+    return this.projectService.findSidebarSubProject(userId, +projectId);
+  }
+
+  @UseGuards(AccessTokenGuard)
   @Get('recent_updates')
   getRecentUpdates(@Req() req: Request) {
     const userId = extractUserId(req);
@@ -90,7 +109,7 @@ export class ProjectController {
       role: body.role,
     });
   }
-  
+
   @UseGuards(AccessTokenGuard)
   @Delete(':id/member')
   removeMember(
@@ -112,5 +131,22 @@ export class ProjectController {
   archivedProject(@Req() req: Request, @Param('id') id: string) {
     const userId = extractUserId(req);
     return this.projectService.archivedProject(+id, userId);
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post(':id/edit')
+  editHeaderProject(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() body: CreateProjectDto,
+  ) {
+    const userId = extractUserId(req);
+    return this.projectService.editHeader({
+      userId: userId,
+      projectId: +id,
+      endDate: body.endDate,
+      name: body.name,
+      startDate: body.startDate,
+    });
   }
 }

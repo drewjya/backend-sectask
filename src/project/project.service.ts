@@ -59,6 +59,17 @@ export class ProjectService {
             name: true,
             startDate: true,
             endDate: true,
+            members: {
+              select: {
+                role: true,
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -283,5 +294,29 @@ export class ProjectService {
     }
 
     return true;
+  }
+
+  async editHeader(param: {
+    userId: number;
+    projectId: number;
+    name: string;
+    startDate: Date;
+    endDate: Date;
+  }) {
+    await this.projectQuery.checkIfProjectActive({
+      projectId: param.projectId,
+      userId: param.userId,
+      role: [ProjectRole.PM],
+    });
+    return this.prisma.project.update({
+      where: {
+        id: param.projectId,
+      },
+      data: {
+        name: param.name,
+        startDate: param.startDate,
+        endDate: param.endDate,
+      },
+    });
   }
 }
