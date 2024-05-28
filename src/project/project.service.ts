@@ -404,7 +404,8 @@ export class ProjectService {
     if (param.type === 'attachment') {
       const attachment = await this.prisma.file.create({
         data: {
-          name: param.originalName,
+          name: param.file.filename,
+          originalName: param.originalName,
           contentType: param.file.mimetype,
           imagePath: param.file.path,
           projectAttachments: {
@@ -418,7 +419,8 @@ export class ProjectService {
     } else {
       const attachment = await this.prisma.file.create({
         data: {
-          name: param.originalName,
+          name: param.file.filename,
+          originalName: param.originalName,
           contentType: param.file.mimetype,
           imagePath: param.file.path,
           projectReports: {

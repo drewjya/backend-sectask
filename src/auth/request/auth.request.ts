@@ -41,3 +41,15 @@ export class ChangePasswordDto {
   @ApiProperty()
   newPassword: string;
 }
+
+export class EditProfileDto {
+  @IsEmail()
+  @IsNotEmpty()
+  @ApiProperty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty()
+  name: string;
+}

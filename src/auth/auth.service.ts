@@ -3,7 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import { hashPassword, verifyHased } from 'src/common/encrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
-import { unauthorized } from 'src/utils/exception/common.exception';
+import { notfound, unauthorized } from 'src/utils/exception/common.exception';
+import { unlinkFile } from 'src/utils/pipe/file.pipe';
 
 @Injectable()
 export class AuthService {
@@ -12,7 +13,6 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
   private async getTokens(userId: number, email: string) {
-    
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
         { sub: userId, email },
@@ -31,6 +31,9 @@ export class AuthService {
   async login(param: { email: string; password: string }) {
     const user = await this.prisma.user.findUnique({
       where: { email: param.email },
+      include: {
+        profilePicture: true,
+      },
     });
     if (!user) {
       throw unauthorized;
@@ -71,7 +74,11 @@ export class AuthService {
   async refresh(param: { userId: number }) {
     const user = await this.prisma.user.findUnique({
       where: { id: param.userId },
+      include: {
+        profilePicture: true,
+      },
     });
+
     if (!user) {
       throw unauthorized;
     }
@@ -81,6 +88,7 @@ export class AuthService {
       user,
     };
   }
+
   async changePassword(param: {
     userId: number;
     newPassword: string;
@@ -109,5 +117,84 @@ export class AuthService {
     return {
       message: 'password_changed',
     };
+  }
+
+
+  async editProfie(param: {
+    userId: number;
+    email: string;
+    name: string;
+  }) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId,
+      },
+    
+    })
+    if (!user) {
+      throw notfound;
+    }
+    return this.prisma.user.update({
+      where: {
+        id: param.userId,
+      },
+      data: {
+        email: param.email,
+        name: param.name,
+        
+      },
+    });
+  }
+
+  async changeProfileImage(param: {
+    userId: number;
+    file: Express.Multer.File;
+  }) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId,
+      },
+    });
+    if (user.profilePictureId) {
+      const file = await this.prisma.file.delete({
+        where: {
+          id: user.profilePictureId,
+        },
+      });
+      unlinkFile(file.imagePath);
+    }
+    return this.prisma.user.update({
+      where: {
+        id: param.userId,
+      },
+      data: {
+        profilePicture: {
+          create: {
+            contentType: param.file.mimetype,
+            name: param.file.filename,
+            imagePath: param.file.path,
+          },
+        },
+      },
+    });
+  }
+
+  async removeImagePath(param: { userId: number }) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId,
+      },
+    });
+    if (user.profilePictureId) {
+      const file = await this.prisma.file.delete({
+        where: {
+          id: user.profilePictureId,
+        },
+      });
+      unlinkFile(file.imagePath);
+      return;
+    } else {
+      throw notfound;
+    }
   }
 }

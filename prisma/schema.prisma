@@ -31,14 +31,15 @@ model User {
 }
 
 model File {
-  id          Int       @id @default(autoincrement())
-  name        String
-  imagePath   String
-  contentType String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-  users       User[]
+  id           Int       @id @default(autoincrement())
+  name         String
+  imagePath    String
+  originalName String?
+  contentType  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+  users        User[]
 
   projectAttachments    Project[]    @relation("ProjectAttachments")
   projectReports        Project[]    @relation("ProjectReports")

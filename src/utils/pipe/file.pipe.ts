@@ -57,7 +57,7 @@ export function addStoragePath(val: string) {
 }
 
 export function unlinkFile(val: string) {
-  unlink(addStoragePath(val), (err) => {
+  unlink(val, (err) => {
     if (err) {
       console.error(err);
       return;
