@@ -14,6 +14,7 @@ import { extractUserId } from 'src/utils/extract/userId';
 import {
   EditCVSSProp,
   EditFProp,
+  EditFindingDto,
   EditResetsProp,
 } from './dto/create-finding.dto';
 import { FindingService } from './finding.service';
@@ -39,6 +40,21 @@ export class FindingController {
     return this.findingService.notifyEdit({
       findingId: +id,
       userId: userId,
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post('edit/:id')
+  editFinding(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() param: EditFindingDto,
+  ) {
+    const userId = extractUserId(req);
+    return this.findingService.editFinding({
+      findingId: +id,
+      userId: userId,
+      properties: param,
     });
   }
 

@@ -1,8 +1,21 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { CVSS_VALUE } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsDate, IsEnum, IsOptional, MinDate } from 'class-validator';
+import {
+  IsDate,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxDate,
+} from 'class-validator';
 
+export class EditFindingDto {
+  @IsNotEmpty()
+  @IsString()
+  @ApiProperty()
+  name: string;
+}
 export class EditFProp {
   @IsOptional()
   @ApiProperty()
@@ -30,14 +43,10 @@ export class EditFProp {
 export class EditResetsProp {
   @IsOptional()
   @ApiProperty()
-  @Transform(({ value }) => new Date(value))
+  @Transform(({ value }) => (value ? new Date(value) : null))
   @IsDate()
-  @MinDate(new Date())
+  @MaxDate(new Date())
   latestUpdate?: Date;
-
-  //   @IsOptional()
-  //   @ApiProperty()
-  // tester?: string;
 
   @IsOptional()
   @ApiProperty()

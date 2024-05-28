@@ -187,6 +187,39 @@ export class FindingService {
     return newFInding;
   }
 
+  async editFinding(param: {
+    properties: {
+      name: string;
+    };
+    userId: number;
+    findingId: number;
+  }) {
+    const finding = await this.prisma.finding.findFirst({
+      where: { id: param.findingId },
+      select: {
+        subProjectId: true,
+      },
+    });
+    if (!finding) {
+      throw unauthorized;
+    }
+    await this.authorizedEditor({
+      roles: [SubprojectRole.CONSULTANT],
+      subprojectId: finding.subProjectId,
+      userId: param.userId,
+    });
+    let newFInding = await this.prisma.finding.update({
+      where: {
+        id: param.findingId,
+      },
+      data: {
+        name: param.properties.name,
+      },
+    });
+    this.notifyEdit({ userId: param.userId, findingId: param.findingId });
+    return newFInding;
+  }
+
   async editRetestProperties(param: {
     properties: {
       latestUpdate?: Date;
