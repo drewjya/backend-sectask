@@ -104,7 +104,7 @@ export class SubprojectService {
         ProjectRole.TECHNICAL_WRITER,
       ],
     });
-    return this.prisma.subProject.findFirst({
+    const subproject = await this.prisma.subProject.findFirst({
       where: {
         id: param.subprojectId,
       },
@@ -126,6 +126,15 @@ export class SubprojectService {
             createdAt: true,
           },
         },
+        project: {
+          select: {
+            members: {
+              include: {
+                member: true,
+              },
+            },
+          },
+        },
         findings: {
           select: {
             id: true,
@@ -141,6 +150,23 @@ export class SubprojectService {
         attachments: true,
       },
     });
+
+    const consultants = subproject.members.map((member) => {
+      return member.user.id;
+    });
+    const subprojectMember = subproject.project.members.map((member) => {
+      return {
+        id: member.userId,
+        name: member.member.name,
+        role: consultants.includes(member.userId) ? 'CONSULTANT' : member.role,
+      };
+    });
+    delete subproject.members;
+    delete subproject.project;
+    return {
+      ...subproject,
+      subprojectMember,
+    };
   }
 
   async createSubproject(param: {

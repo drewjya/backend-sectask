@@ -269,11 +269,3 @@ enum ProjectRole {
   DEVELOPER
   TECHNICAL_WRITER
 }
-
-enum SubprojectRole {
-  PM
-  DEVELOPER
-  TECHNICAL_WRITER
-  VIEWER
-  CONSULTANT
-}

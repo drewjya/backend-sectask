@@ -154,10 +154,20 @@ export class ProjectQuery {
             userId: true,
           },
         },
-        project: true,
+
+        project: {
+          include: {
+            members: {
+              include: {
+                member: true,
+              },
+            },
+          },
+        },
         findings: true,
       },
     });
+
     if (!subprojectData) {
       throw notfound;
     }
@@ -167,9 +177,11 @@ export class ProjectQuery {
         data: 'subproject_is_archived',
       });
     }
-    const member = subprojectData.members.find(
-      (member) => member.userId === userId,
+    const member = subprojectData.project.members.find(
+      (member) => member.userId === userId && params.role.includes(member.role),
     );
+    console.log(member);
+
     if (!member) {
       throw forbidden;
     }
