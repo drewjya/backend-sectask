@@ -83,6 +83,19 @@ export class ProjectService {
     return this.projectQuery.getProjectByStatus({ userId, active: true });
   }
 
+  findSidebarSubProject(userId: number, projectId: number) {
+    return this.projectQuery.getSubprojectSidebar({
+      userId,
+      projectId,
+    });
+  }
+  findSidebarFInding(userId: number, subprojectId: number) {
+    return this.projectQuery.getFindingSidebar({
+      userId,
+      subprojectId,
+    });
+  }
+
   findArchivedProject(userId: number) {
     return this.projectQuery.getProjectByStatus({ userId, active: false });
   }

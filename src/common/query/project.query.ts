@@ -3,9 +3,7 @@ import {
   Project,
   ProjectLog,
   ProjectRole,
-  
   SubProjectLog,
-  
   SubprojectRole,
 } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -47,6 +45,44 @@ export class ProjectQuery {
       },
     });
     return project;
+  }
+
+  async getSubprojectSidebar(params: { userId: number; projectId: number }) {
+    const subprojects = await this.prisma.subProject.findMany({
+      where: {
+        projectId: params.projectId,
+        members: {
+          some: {
+            userId: params.userId,
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+    return subprojects;
+  }
+
+  async getFindingSidebar(params: { userId: number; subprojectId: number }) {
+    const findings = await this.prisma.finding.findMany({
+      where: {
+        subProjectId: params.subprojectId,
+        subProject: {
+          members: {
+            some: {
+              userId: params.userId,
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+    return findings;
   }
 
   async checkIfProjectActive(params: {
