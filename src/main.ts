@@ -3,6 +3,7 @@ import { HttpAdapterHost, NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import {
   AllExceptionsFilter,
+  // AllExceptionsFilter,
   AuthFilter,
   InternalServerFilter,
 } from './auth/auth.filter';
@@ -25,10 +26,10 @@ async function bootstrap() {
   const authFilter = new AuthFilter(httpAdapter);
 
   const internalFilter = new InternalServerFilter(httpAdapter);
+  app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
   app.useGlobalFilters(prismaFilter);
   app.useGlobalFilters(authFilter);
   app.useGlobalFilters(internalFilter);
-  app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 
   app.useGlobalInterceptors(new TransformInterceptor());
   await app.listen(3000);
