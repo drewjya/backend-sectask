@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
-import { response, Response } from 'express';
+import { Response, response } from 'express';
 import { ApiException } from 'src/utils/exception/api.exception';
 
 @Catch(ApiException)

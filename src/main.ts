@@ -19,6 +19,7 @@ async function bootstrap() {
   const httpAdapter = app.get(HttpAdapterHost).httpAdapter.getInstance();
   const prismaFilter = new PrismaClientExceptionFilter(httpAdapter);
   const authFilter = new AuthFilter(httpAdapter);
+  
   const internalFilter = new InternalServerFilter(httpAdapter);
   app.useGlobalFilters(prismaFilter);
   app.useGlobalFilters(authFilter);
