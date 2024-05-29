@@ -39,7 +39,7 @@ export class ProjectController {
   @Get('active')
   getActive(@Req() req: Request) {
     const userId = extractUserId(req);
-    return this.projectService.findActiveProject(userId);
+    return this.projectService.findActiveProject(+'jdsjsd');
   }
 
   @UseGuards(AccessTokenGuard)

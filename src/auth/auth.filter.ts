@@ -1,6 +1,7 @@
 import {
   ArgumentsHost,
   Catch,
+  HttpStatus,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
@@ -47,6 +48,32 @@ export class InternalServerFilter extends BaseExceptionFilter {
     const resp = exception.getResponse();
     error['@root'] = message;
     error['error'] = `${exception.message} | ${exception.stack}`;
+    const errorResponse = {
+      status: status,
+      error: error,
+      message: message,
+      data: null,
+    };
+    response.status(status).json(errorResponse);
+  }
+}
+
+@Catch()
+export class AllExceptionsFilter extends BaseExceptionFilter {
+  catch(exception: unknown, host: ArgumentsHost) {
+    console.log(
+      `ERROR ${exception['name']}: MESSGAE ${exception['clientVersion']} STATUS ${Object.keys(exception)}`,
+    );
+
+    const message = 'internal_error';
+
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+
+    const status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let error = {};
+    error['@root'] = message;
+
     const errorResponse = {
       status: status,
       error: error,
