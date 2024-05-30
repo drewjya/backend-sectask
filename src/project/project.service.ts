@@ -19,7 +19,6 @@ export class ProjectService {
       { role: ProjectRole.PM, userId: userId },
     ];
     if (createProjectDto.members.length > 0) {
-      
       members = [...members, ...createProjectDto.members];
     }
     const project = await this.prisma.project.create({
@@ -186,6 +185,29 @@ export class ProjectService {
             id: param.projectId,
           },
         },
+      },
+      select: {
+        email: true,
+        id: true,
+        name: true,
+      },
+    });
+    return users;
+  }
+  async searchMemberInit(param: { email: string; userId: number }) {
+    const users = await this.prisma.user.findMany({
+      where: {
+        email: {
+          contains: param.email,
+        },
+        NOT: {
+          id: param.userId,
+        },
+      },
+      select: {
+        email: true,
+        id: true,
+        name: true,
       },
     });
     return users;
