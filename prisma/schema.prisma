@@ -91,16 +91,16 @@ model Project {
 }
 
 model ProjectMember {
-  id               Int               @id @default(autoincrement())
-  member           User              @relation(fields: [userId], references: [id])
+  id               Int                @id @default(autoincrement())
+  member           User               @relation(fields: [userId], references: [id])
   userId           Int
   role             ProjectRole
-  project          Project           @relation(fields: [projectId], references: [id])
+  project          Project            @relation(fields: [projectId], references: [id])
   projectId        Int
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
   deletedAt        DateTime?
-  subprojectMember SubprojectMember?
+  subprojectMember SubprojectMember[]
 
   @@unique([projectId, userId])
 }
@@ -133,10 +133,10 @@ model SubprojectMember {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   deletedAt       DateTime?
-  projectMemberId Int           @unique
-  projectMember   ProjectMember @relation(fields: [projectMemberId], references: [id])
+  projectMemberId Int
+  projectMember   ProjectMember @relation(fields: [projectMemberId], references: [id], onDelete: Cascade)
 
-  @@unique([subprojectId, userId])
+  @@unique([subprojectId, userId, projectMemberId])
 }
 
 model Finding {

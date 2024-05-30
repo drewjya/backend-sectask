@@ -287,47 +287,46 @@ export class ProjectService {
       role: [ProjectRole.PM],
     });
 
-    const projectMember = await this.prisma.projectMember.delete({
+    const findProjectMember = await this.prisma.projectMember.findFirst({
       where: {
-        projectId_userId: {
-          projectId: param.projectId,
-          userId: param.userId,
-        },
+        projectId: param.projectId,
+        userId: param.userId,
       },
-      select: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-            subProjects: true,
+      include: {
+        subprojectMember: {
+          include: {
+            subproject: true,
           },
         },
+        project: true,
         member: true,
       },
     });
 
-    await this.projectQuery.addProjectRecentActivities({
-      projectId: projectMember.project.id,
-      title: `Project ${projectMember.project.name}`,
-      description: `${projectMember.member.name} has been removed`,
+    if (!findProjectMember) {
+      throw notfound;
+    }
+    const subprojects = findProjectMember.subprojectMember;
+
+    await this.prisma.projectMember.delete({
+      where: {
+        id: findProjectMember.id,
+      },
     });
 
-    const subprojects = projectMember.project.subProjects;
     for (const iterator of subprojects) {
-      await this.prisma.subprojectMember.delete({
-        where: {
-          subprojectId_userId: {
-            subprojectId: iterator.id,
-            userId: param.userId,
-          },
-        },
-      });
       await this.projectQuery.addSubProjectRecentActivities({
-        subprojectId: iterator.id,
-        title: `Subproject ${iterator.name}`,
-        description: `${projectMember.member.name} has been removed`,
+        subprojectId: iterator.subproject.id,
+        title: `Subproject ${iterator.subproject.name}`,
+        description: `${findProjectMember.member.name} has been removed`,
       });
     }
+
+    await this.projectQuery.addProjectRecentActivities({
+      projectId: findProjectMember.project.id,
+      title: `Project ${findProjectMember.project.name}`,
+      description: `${findProjectMember.member.name} has been removed`,
+    });
 
     return true;
   }
@@ -369,7 +368,8 @@ export class ProjectService {
     });
     const project = await this.prisma.file.create({
       data: {
-        name: param.file.originalname,
+        name: param.file.filename,
+
         contentType: param.file.mimetype,
         imagePath: param.file.path,
         project: {

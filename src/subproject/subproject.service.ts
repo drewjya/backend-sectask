@@ -41,7 +41,13 @@ export class SubprojectService {
       throw noaccess;
     }
     if (param.add) {
-      if (projectMembers.subprojectMember) {
+      const check = projectMembers.subprojectMember.find(
+        (e) =>
+          e.subprojectId === param.subprojectId && e.userId === param.memberId,
+      );
+      console.log(check);
+
+      if (check) {
         throw new ApiException({
           data: 'Member consultant in subproject',
           status: HttpStatus.BAD_REQUEST,
@@ -73,9 +79,18 @@ export class SubprojectService {
           status: HttpStatus.BAD_REQUEST,
         });
       }
+      const check = projectMembers.subprojectMember.find(
+        (member) => member.subprojectId === param.subprojectId,
+      );
+      if (!check) {
+        throw new ApiException({
+          data: 'Member not consultant in subproject',
+          status: HttpStatus.BAD_REQUEST,
+        });
+      }
       await this.prisma.subprojectMember.delete({
         where: {
-          id: projectMembers.subprojectMember.id,
+          id: check.id,
         },
       });
     }
