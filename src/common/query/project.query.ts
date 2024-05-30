@@ -42,6 +42,21 @@ export class ProjectQuery {
         },
         archived: !params.active,
       },
+      select: {
+        id: true,
+        owner: {
+          select: {
+            name: true,
+            email: true,
+            profilePicture: true,
+          },
+        },
+        name: true,
+        projectPicture: true,
+        archived: true,
+        startDate: true,
+        endDate: true,
+      },
     });
     return project;
   }
@@ -284,6 +299,10 @@ export class ProjectQuery {
         });
       }
     });
+    activities.sort((a, b) => {
+      return a.createdAt > b.createdAt ? -1 : 1;
+    });
+    activities = activities.slice(0, 5);
     return activities;
   }
 }
