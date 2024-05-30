@@ -50,6 +50,15 @@ export class AddMemberDto {
   role: ProjectRole;
 }
 
+export class AddMembersDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @ApiProperty()
+  @ArrayMinSize(1)
+  @Type(() => AddMemberDto)
+  members: AddMemberDto[];
+}
+
 
 
 

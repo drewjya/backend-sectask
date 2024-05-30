@@ -83,13 +83,10 @@ export class ProjectController {
 
   @UseGuards(AccessTokenGuard)
   @Get('member')
-  searchMemberInit(
-    @Req() req: Request,
-    @Query('email') email: string,
-  ) {
+  searchMemberInit(@Req() req: Request, @Query('email') email: string) {
     const userId = extractUserId(req);
-    return this.projectService.searchMemberInit({email, userId});
-    }
+    return this.projectService.searchMemberInit({ email, userId });
+  }
 
   @UseGuards(AccessTokenGuard)
   @Get(':id')
@@ -97,7 +94,6 @@ export class ProjectController {
     const userId = extractUserId(req);
     return this.projectService.findOne(+id, userId);
   }
-
 
   @UseGuards(AccessTokenGuard)
   @Get(':id/member')

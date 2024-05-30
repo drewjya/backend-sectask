@@ -80,25 +80,33 @@ export class ProjectQuery {
   }
 
   async getSubprojectSidebar(params: { userId: number; projectId: number }) {
-    const subprojects = await this.prisma.subProject.findMany({
+    console.log(params.projectId);
+
+    const subprojects = await this.prisma.project.findFirst({
       where: {
-        projectId: params.projectId,
-        project: {
-          members: {
-            some: {
-              userId: params.userId,
-            },
+        id: params.projectId,
+
+        members: {
+          some: {
+            userId: params.userId,
           },
         },
       },
       select: {
         id: true,
         name: true,
+        subProjects: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
+
     console.log(subprojects, params.projectId);
 
-    return subprojects;
+    return subprojects.subProjects;
   }
 
   async getFindingSidebar(params: { userId: number; subprojectId: number }) {
