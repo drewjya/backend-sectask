@@ -6,6 +6,11 @@ export const unauthorized = new ApiException({
   status: HttpStatus.UNAUTHORIZED,
 });
 
+export const noaccess = new ApiException({
+  data: 'noaccess',
+  status: HttpStatus.UNAUTHORIZED,
+});
+
 export const forbidden = new ApiException({
   data: 'forbidden',
   status: HttpStatus.FORBIDDEN,

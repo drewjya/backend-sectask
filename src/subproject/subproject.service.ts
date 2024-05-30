@@ -3,7 +3,7 @@ import { ProjectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
-import { notfound } from 'src/utils/exception/common.exception';
+import { noaccess, notfound } from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
 
 @Injectable()
@@ -34,17 +34,11 @@ export class SubprojectService {
       },
     });
     if (!projectMembers) {
-      throw new ApiException({
-        data: 'Member not found',
-        status: HttpStatus.UNAUTHORIZED,
-      });
+      throw noaccess;
     }
     const approvedRole: ProjectRole = ProjectRole.VIEWER;
     if (approvedRole !== projectMembers.role) {
-      throw new ApiException({
-        data: 'Role not allowed',
-        status: HttpStatus.UNAUTHORIZED,
-      });
+      throw noaccess;
     }
     if (param.add) {
       if (projectMembers.subprojectMember) {
@@ -128,6 +122,8 @@ export class SubprojectService {
         },
         project: {
           select: {
+            id: true,
+            name: true,
             members: {
               include: {
                 member: true,
@@ -162,7 +158,7 @@ export class SubprojectService {
       };
     });
     delete subproject.members;
-    delete subproject.project;
+    delete subproject.project.members;
     return {
       ...subproject,
       subprojectMember,

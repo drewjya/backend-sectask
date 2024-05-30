@@ -36,6 +36,7 @@ export class AuthController {
     return this.authService.register(body);
   }
 
+  @UseGuards(AccessTokenGuard)
   @Post('change_password')
   changePassword(@Body() body: ChangePasswordDto, @Req() req: Request) {
     const userId = extractUserId(req);

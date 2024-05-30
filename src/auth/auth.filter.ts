@@ -58,28 +58,28 @@ export class InternalServerFilter extends BaseExceptionFilter {
   }
 }
 
-@Catch()
-export class AllExceptionsFilter extends BaseExceptionFilter {
-  catch(exception: unknown, host: ArgumentsHost) {
-    console.log(
-      `ERROR ${exception['name']}: MESSGAE ${exception['clientVersion']} STATUS ${Object.keys(exception)}`,
-    );
+// @Catch()
+// export class AllExceptionsFilter extends BaseExceptionFilter {
+//   catch(exception: unknown, host: ArgumentsHost) {
+//     console.log(
+//       `ERROR ${exception['name']}: MESSGAE ${exception['clientVersion']} STATUS ${exception}`,
+//     );
 
-    const message = 'internal_error';
+//     const message = 'internal_error';
 
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
+//     const ctx = host.switchToHttp();
+//     const response = ctx.getResponse<Response>();
 
-    const status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let error = {};
-    error['@root'] = message;
+//     const status = HttpStatus.INTERNAL_SERVER_ERROR;
+//     let error = {};
+//     error['@root'] = message;
 
-    const errorResponse = {
-      status: status,
-      error: error,
-      message: message,
-      data: null,
-    };
-    response.status(status).json(errorResponse);
-  }
-}
+//     const errorResponse = {
+//       status: status,
+//       error: error,
+//       message: message,
+//       data: null,
+//     };
+//     response.status(status).json(errorResponse);
+//   }
+// }

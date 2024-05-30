@@ -3,7 +3,11 @@ import { JwtService } from '@nestjs/jwt';
 import { hashPassword, verifyHased } from 'src/common/encrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
-import { notfound, unauthorized } from 'src/utils/exception/common.exception';
+import {
+  noaccess,
+  notfound,
+  unauthorized,
+} from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
 
 @Injectable()
@@ -46,6 +50,10 @@ export class AuthService {
       throw unauthorized;
     }
     const tokens = await this.getTokens(user.id, user.email);
+    delete user.deletedAt;
+    delete user.createdAt;
+    delete user.updatedAt;
+    delete user.password;
     return {
       token: tokens,
       user,
@@ -69,6 +77,10 @@ export class AuthService {
         password: newPassword,
       },
     });
+    delete user.deletedAt;
+    delete user.createdAt;
+    delete user.updatedAt;
+    delete user.password;
     return user;
   }
   async refresh(param: { userId: number }) {
@@ -82,6 +94,11 @@ export class AuthService {
     if (!user) {
       throw unauthorized;
     }
+    delete user.deletedAt;
+    delete user.createdAt;
+    delete user.updatedAt;
+    delete user.password;
+
     const tokens = await this.getTokens(user.id, user.email);
     return {
       token: tokens,
@@ -105,7 +122,7 @@ export class AuthService {
       value: param.oldPassword,
     });
     if (!isPasswordValid) {
-      throw unauthorized;
+      throw noaccess;
     }
     const newPassword = await hashPassword(param.newPassword);
     await this.prisma.user.update({
@@ -119,20 +136,25 @@ export class AuthService {
     };
   }
 
-
-  async editProfie(param: {
-    userId: number;
-    email: string;
-    name: string;
-  }) {
+  async editProfie(param: { userId: number; email: string; name: string }) {
     const user = await this.prisma.user.findFirst({
       where: {
         id: param.userId,
       },
-    
-    })
+    });
     if (!user) {
       throw notfound;
+    }
+    const checkEmail = await this.prisma.user.findFirst({
+      where: {
+        email: param.email,
+      },
+    });
+    if (checkEmail && checkEmail.id !== user.id) {
+      throw new ApiException({
+        data: 'email_already_exists',
+        status: HttpStatus.CONFLICT,
+      });
     }
     return this.prisma.user.update({
       where: {
@@ -141,7 +163,6 @@ export class AuthService {
       data: {
         email: param.email,
         name: param.name,
-        
       },
     });
   }

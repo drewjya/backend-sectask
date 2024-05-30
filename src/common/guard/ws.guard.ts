@@ -1,13 +1,8 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { verify } from 'jsonwebtoken';
 import { Observable } from 'rxjs';
 import { Socket } from 'socket.io';
-import { ApiException } from 'src/utils/exception/api.exception';
+import { unauthorized } from 'src/utils/exception/common.exception';
 
 @Injectable()
 export class WsGuard implements CanActivate {
@@ -27,10 +22,7 @@ export class WsGuard implements CanActivate {
       client.handshake.auth.token ?? client.handshake.headers.authorization;
 
     if (!authorization) {
-      throw new ApiException({
-        status: HttpStatus.UNAUTHORIZED,
-        data: 'unauthorized',
-      });
+      throw unauthorized;
     }
     const token: string = authorization.split(' ')[1];
     const payload = verify(token, process.env.JWT_ACCESS_SECRET);

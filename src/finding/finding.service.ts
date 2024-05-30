@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { CVSS_VALUE, ProjectRole } from '@prisma/client';
+import { ProjectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { uuid } from 'src/common/uuid';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { unauthorized } from 'src/utils/exception/common.exception';
+import { noaccess } from 'src/utils/exception/common.exception';
+import { CVSS_VALUE, basicCvss } from './finding.enum';
 
 @Injectable()
 export class FindingService {
@@ -22,7 +23,7 @@ export class FindingService {
       (member) => member.userId === param.userId,
     );
     if (!member) {
-      throw unauthorized;
+      throw noaccess;
     }
     return this.prisma.finding.create({
       data: {
@@ -41,7 +42,9 @@ export class FindingService {
           create: {},
         },
         cvssDetail: {
-          create: {},
+          create: {
+            data: basicCvss(),
+          },
         },
         testerFinding: {
           create: {
@@ -84,7 +87,7 @@ export class FindingService {
       },
     });
     if (!subproject) {
-      throw unauthorized;
+      throw noaccess;
     }
     return this.prisma.testerFinding.upsert({
       where: {
@@ -130,20 +133,47 @@ export class FindingService {
       },
       include: {
         cvssDetail: true,
+        createdBy: {
+          select: {
+            profilePicture: true,
+            id: true,
+            name: true,
+          },
+        },
+        subProject: {
+          select: {
+            name: true,
+            id: true,
+            project: {
+              select: {
+                name: true,
+                id: true,
+              },
+            },
+          },
+        },
         testerFinding: {
           where: {
             userId: param.userId,
           },
           include: {
-            user: true,
+            user: {
+              select: {
+                name: true,
+                email: true,
+                id: true,
+                profilePicture: true,
+              },
+            },
           },
         },
         chatRoom: true,
       },
     });
     if (!finding) {
-      throw unauthorized;
+      throw noaccess;
     }
+
     return finding;
   }
 
@@ -167,7 +197,7 @@ export class FindingService {
       },
     });
     if (!finding) {
-      throw unauthorized;
+      throw noaccess;
     }
     await this.authorizedEditor({
       subprojectId: finding.subProjectId,
@@ -205,7 +235,7 @@ export class FindingService {
       },
     });
     if (!finding) {
-      throw unauthorized;
+      throw noaccess;
     }
     await this.authorizedEditor({
       subprojectId: finding.subProjectId,
@@ -240,7 +270,7 @@ export class FindingService {
       },
     });
     if (!finding) {
-      throw unauthorized;
+      throw noaccess;
     }
     await this.authorizedEditor({
       subprojectId: finding.subProjectId,
@@ -307,7 +337,7 @@ export class FindingService {
       },
     });
     if (!finding) {
-      throw unauthorized;
+      throw noaccess;
     }
     await this.authorizedEditor({
       subprojectId: finding.subProjectId,
@@ -318,7 +348,7 @@ export class FindingService {
         id: finding.cvssDetailId,
       },
       data: {
-        ...param.cvss,
+        data: param.cvss,
       },
     });
   }
@@ -365,18 +395,18 @@ export class FindingService {
         },
       });
       if (!subproject) {
-        throw unauthorized;
+        throw noaccess;
       }
       const member = subproject.project.members.find(
         (member) => member.userId === param.userId,
       );
       if (!member) {
-        throw unauthorized;
+        throw noaccess;
       }
       if (member.role === ProjectRole.PM) {
         return;
       } else {
-        throw unauthorized;
+        throw noaccess;
       }
     } else {
       const subprojectMember = await this.prisma.subprojectMember.findFirst({
@@ -403,7 +433,7 @@ export class FindingService {
       });
 
       if (!subprojectMember) {
-        throw unauthorized;
+        throw noaccess;
       }
 
       return;

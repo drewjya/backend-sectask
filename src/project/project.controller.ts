@@ -196,7 +196,7 @@ export class ProjectController {
       userId,
       file,
       originalName,
-      acceptRole: [ProjectRole.PM, ProjectRole.TECHNICAL_WRITER],
+      acceptRole: [ProjectRole.TECHNICAL_WRITER],
       projectId: +id,
       type: 'report',
     });
@@ -216,7 +216,7 @@ export class ProjectController {
       userId,
       file,
       originalName,
-      acceptRole: [ProjectRole.PM, ProjectRole.DEVELOPER],
+      acceptRole: [ProjectRole.DEVELOPER],
       projectId: +id,
       type: 'attachment',
     });
@@ -234,7 +234,7 @@ export class ProjectController {
       userId,
       fileId: +fileId,
       projectId: +id,
-      acceptRole: [ProjectRole.PM, ProjectRole.TECHNICAL_WRITER],
+      acceptRole: [ProjectRole.TECHNICAL_WRITER],
     });
   }
 
@@ -250,7 +250,7 @@ export class ProjectController {
       userId,
       fileId: +fileId,
       projectId: +id,
-      acceptRole: [ProjectRole.PM, ProjectRole.DEVELOPER],
+      acceptRole: [ProjectRole.DEVELOPER],
     });
   }
 }

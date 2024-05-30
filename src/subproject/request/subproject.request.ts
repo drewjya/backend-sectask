@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsDate, IsNotEmpty, IsNumber, MinDate } from 'class-validator';
+import { IsDate, IsNotEmpty, IsNumber } from 'class-validator';
 
 export class CreateSubProjectDto {
   @IsNotEmpty()
@@ -10,14 +10,12 @@ export class CreateSubProjectDto {
   @IsNotEmpty()
   @Transform(({ value }) => new Date(value))
   @IsDate()
-  @MinDate(new Date())
   @ApiProperty()
   endDate: Date;
 
   @IsNotEmpty()
   @Transform(({ value }) => new Date(value))
   @IsDate()
-  @MinDate(new Date())
   @ApiProperty()
   startDate: Date;
 
@@ -34,14 +32,12 @@ export class UpdateHeaderDto {
   @IsNotEmpty()
   @Transform(({ value }) => new Date(value))
   @IsDate()
-  @MinDate(new Date())
   @ApiProperty()
   endDate: Date;
 
   @IsNotEmpty()
   @Transform(({ value }) => new Date(value))
   @IsDate()
-  @MinDate(new Date())
   @ApiProperty()
   startDate: Date;
 }

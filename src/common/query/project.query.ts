@@ -68,9 +68,11 @@ export class ProjectQuery {
     const subprojects = await this.prisma.subProject.findMany({
       where: {
         projectId: params.projectId,
-        members: {
-          some: {
-            userId: params.userId,
+        project: {
+          members: {
+            some: {
+              userId: params.userId,
+            },
           },
         },
       },
@@ -79,6 +81,8 @@ export class ProjectQuery {
         name: true,
       },
     });
+    console.log(subprojects, params.projectId);
+
     return subprojects;
   }
 
@@ -87,9 +91,11 @@ export class ProjectQuery {
       where: {
         subProjectId: params.subprojectId,
         subProject: {
-          members: {
-            some: {
-              userId: params.userId,
+          project: {
+            members: {
+              some: {
+                userId: params.userId,
+              },
             },
           },
         },

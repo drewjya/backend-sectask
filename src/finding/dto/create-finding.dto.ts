@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CVSS_VALUE } from '@prisma/client';
+
 import { Transform } from 'class-transformer';
 import {
   IsDate,
@@ -9,6 +9,7 @@ import {
   IsString,
   MaxDate,
 } from 'class-validator';
+import { CVSS_VALUE } from '../finding.enum';
 
 export class EditFindingDto {
   @IsNotEmpty()

@@ -196,39 +196,8 @@ model Document {
 }
 
 model CvssDetail {
-  id      Int        @id @default(autoincrement())
-  av      CVSS_VALUE @default(C0)
-  ac      CVSS_VALUE @default(C0)
-  at      CVSS_VALUE @default(C0)
-  pr      CVSS_VALUE @default(C0)
-  ui      CVSS_VALUE @default(C0)
-  vc      CVSS_VALUE @default(C2)
-  vi      CVSS_VALUE @default(C2)
-  va      CVSS_VALUE @default(C2)
-  sc      CVSS_VALUE @default(C2)
-  si      CVSS_VALUE @default(C2)
-  sa      CVSS_VALUE @default(C2)
-  s       CVSS_VALUE @default(C0)
-  au      CVSS_VALUE @default(C0)
-  r       CVSS_VALUE @default(C0)
-  v       CVSS_VALUE @default(C0)
-  re      CVSS_VALUE @default(C0)
-  u       CVSS_VALUE @default(C0)
-  mav     CVSS_VALUE @default(C0)
-  mac     CVSS_VALUE @default(C0)
-  mat     CVSS_VALUE @default(C0)
-  mpr     CVSS_VALUE @default(C0)
-  mui     CVSS_VALUE @default(C0)
-  mvc     CVSS_VALUE @default(C0)
-  mvi     CVSS_VALUE @default(C0)
-  mva     CVSS_VALUE @default(C0)
-  msc     CVSS_VALUE @default(C0)
-  msi     CVSS_VALUE @default(C0)
-  msa     CVSS_VALUE @default(C0)
-  cr      CVSS_VALUE @default(C0)
-  ir      CVSS_VALUE @default(C0)
-  ar      CVSS_VALUE @default(C0)
-  e       CVSS_VALUE @default(C0)
+  id      Int       @id @default(autoincrement())
+  data    Json
   Finding Finding[]
 }
 
@@ -254,13 +223,6 @@ model Chat {
   userId     Int
   chatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
   chatRoomId Int?
-}
-
-enum CVSS_VALUE {
-  C0
-  C1
-  C2
-  C3
 }
 
 enum ProjectRole {

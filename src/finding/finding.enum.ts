@@ -1,0 +1,43 @@
+export enum CVSS_VALUE {
+  C0 = 'C0',
+  C1 = 'C1',
+  C2 = 'C2',
+  C3 = 'C3',
+}
+
+export const basicCvss = () => {
+  return {
+    av: CVSS_VALUE.C0,
+    ac: CVSS_VALUE.C0,
+    at: CVSS_VALUE.C0,
+    pr: CVSS_VALUE.C0,
+    ui: CVSS_VALUE.C0,
+    vc: CVSS_VALUE.C2,
+    vi: CVSS_VALUE.C2,
+    va: CVSS_VALUE.C2,
+    sc: CVSS_VALUE.C2,
+    si: CVSS_VALUE.C2,
+    sa: CVSS_VALUE.C2,
+    s: CVSS_VALUE.C0,
+    au: CVSS_VALUE.C0,
+    r: CVSS_VALUE.C0,
+    v: CVSS_VALUE.C0,
+    re: CVSS_VALUE.C0,
+    u: CVSS_VALUE.C0,
+    mav: CVSS_VALUE.C0,
+    mac: CVSS_VALUE.C0,
+    mat: CVSS_VALUE.C0,
+    mpr: CVSS_VALUE.C0,
+    mui: CVSS_VALUE.C0,
+    mvc: CVSS_VALUE.C0,
+    mvi: CVSS_VALUE.C0,
+    mva: CVSS_VALUE.C0,
+    msc: CVSS_VALUE.C0,
+    msi: CVSS_VALUE.C0,
+    msa: CVSS_VALUE.C0,
+    cr: CVSS_VALUE.C0,
+    ir: CVSS_VALUE.C0,
+    ar: CVSS_VALUE.C0,
+    e: CVSS_VALUE.C0,
+  };
+};

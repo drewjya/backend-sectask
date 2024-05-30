@@ -15,6 +15,13 @@ export class ProjectService {
   }
 
   async create(createProjectDto: CreateProjectDto, userId: number) {
+    let members: { role: ProjectRole; userId: number }[] = [
+      { role: ProjectRole.PM, userId: userId },
+    ];
+    if (createProjectDto.members.length > 0) {
+      
+      members = [...members, ...createProjectDto.members];
+    }
     const project = await this.prisma.project.create({
       data: {
         name: createProjectDto.name,
@@ -22,7 +29,7 @@ export class ProjectService {
         endDate: createProjectDto.endDate,
         startDate: createProjectDto.startDate,
         members: {
-          create: [{ role: 'PM', userId: userId }],
+          create: members,
         },
         owner: {
           connect: {
@@ -48,6 +55,13 @@ export class ProjectService {
         id,
       },
       include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            profilePicture: true,
+          },
+        },
         attachments: true,
         reports: true,
         recentActivities: {
@@ -98,7 +112,17 @@ export class ProjectService {
     if (!isMember) {
       throw notfound;
     }
-    return project;
+    const members = project.members.map((member) => {
+      return {
+        role: member.role,
+        id: member.member.id,
+        name: member.member.name,
+      };
+    });
+    return {
+      ...project,
+      members,
+    };
   }
 
   findActiveProject(userId: number) {
