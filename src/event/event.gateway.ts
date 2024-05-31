@@ -275,4 +275,14 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .in(getFindingRoom(value.findingId))
       .emit(FINDING_EVENT.HEADER, value);
   }
+
+
+  @OnEvent(FINDING_ON_MESSAGE.FINDINGPROP)
+  onFindingProp(payload: any) { }
+
+  @OnEvent(FINDING_ON_MESSAGE.RETEST)
+  onFindingRetest(payload: any) { }
+
+  @OnEvent(FINDING_ON_MESSAGE.CVSS)
+  onFindingCVSS(payload: any) { }
 }
