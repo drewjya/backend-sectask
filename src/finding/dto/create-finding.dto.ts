@@ -62,91 +62,123 @@ export class EditCVSSProp {
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   av: CVSS_VALUE;
+
+  @IsEnum(CVSS_VALUE)
+  @ApiProperty()
   ac: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   at: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   pr: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   ui: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   vc: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   vi: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   va: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   sc: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   si: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   sa: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   s: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   au: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   r: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   v: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   re: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   u: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   mav: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   mac: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   mat: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   mpr: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   mui: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   mvc: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   mvi: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   mva: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   msc: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   msi: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   msa: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   cr: CVSS_VALUE;
+
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   ir: CVSS_VALUE;
+  
   @IsEnum(CVSS_VALUE)
   @ApiProperty()
   ar: CVSS_VALUE;

@@ -18,10 +18,10 @@ import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProjectRole } from '@prisma/client';
 import { EventFile } from 'src/types/file';
-import { EventHeader } from 'src/types/header';
-import { EventMember } from 'src/types/member';
+import { ProjectEventHeader } from 'src/types/header';
+import { EventMember, EventSubprojectMember } from 'src/types/member';
 import { EventSidebarProject } from 'src/types/sidebar';
-import { PROJECT_ON_MESSAGE } from 'src/utils/event';
+import { PROJECT_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
 import { extractUserId } from 'src/utils/extract/userId';
 import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
 import { ProjectService } from './project.service';
@@ -144,7 +144,7 @@ export class ProjectController {
       userId: body.userId,
       role: body.role,
     });
-    const val: EventMember = {
+    const projectMember: EventMember = {
       docId: +id,
       type: 'add',
       member: {
@@ -153,7 +153,13 @@ export class ProjectController {
         role: body.role,
       },
     };
-    this.emitter.emit(PROJECT_ON_MESSAGE.MEMBER, val);
+    this.emitter.emit(PROJECT_ON_MESSAGE.MEMBER, projectMember);
+    const subprojectMember: EventSubprojectMember = {
+      subprojectId: newMem.subprojectIds,
+      type: 'add',
+      member: projectMember.member,
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.MEMBER, subprojectMember);
     const data: EventSidebarProject = {
       project: {
         projectId: +id,
@@ -222,7 +228,7 @@ export class ProjectController {
       startDate: body.startDate,
     });
 
-    const newHeader: EventHeader = {
+    const newHeader: ProjectEventHeader = {
       name: newData.name,
       startDate: newData.startDate,
       endDate: newData.endDate,
@@ -246,6 +252,7 @@ export class ProjectController {
       type: 'edit',
       userId: newData.members.map((m) => m.userId),
     };
+
     this.emitter.emit(PROJECT_ON_MESSAGE.SIDEBAR, data);
     return newData;
   }
@@ -264,7 +271,7 @@ export class ProjectController {
       file,
       projectId: +id,
     });
-    const newHeader: EventHeader = {
+    const newHeader: ProjectEventHeader = {
       name: newData.name,
       startDate: newData.startDate,
       endDate: newData.endDate,
@@ -283,7 +290,7 @@ export class ProjectController {
       userId,
       projectId: +id,
     });
-    const newHeader: EventHeader = {
+    const newHeader: ProjectEventHeader = {
       name: newData.name,
       startDate: newData.startDate,
       endDate: newData.endDate,

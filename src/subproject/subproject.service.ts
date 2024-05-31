@@ -31,6 +31,7 @@ export class SubprojectService {
       },
       include: {
         subprojectMember: true,
+        member: true,
       },
     });
     if (!projectMembers) {
@@ -45,7 +46,6 @@ export class SubprojectService {
         (e) =>
           e.subprojectId === param.subprojectId && e.userId === param.memberId,
       );
-      console.log(check);
 
       if (check) {
         throw new ApiException({
@@ -99,7 +99,10 @@ export class SubprojectService {
       title: `Member ${param.add ? 'Promotion' : 'Demoted'}`,
       description: `Member has been ${param.add ? 'Promoted To Consultant' : 'Demoted To Viewer'} by [${param.userId}]`,
     });
-    return subproject;
+    return {
+      ...subproject,
+      userName: projectMembers.member.name,
+    };
   }
 
   async findDetail(param: { subprojectId: number; userId: number }) {
@@ -247,6 +250,26 @@ export class SubprojectService {
         name: param.name,
         startDate: param.startDate,
         endDate: param.endDate,
+      },
+      select: {
+        name: true,
+        id: true,
+        startDate: true,
+        endDate: true,
+        project: {
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
+            name: true,
+            members: {
+              select: {
+                userId: true,
+                role: true,
+              },
+            },
+          },
+        },
       },
     });
     await this.projectQuery.addSubProjectRecentActivities({

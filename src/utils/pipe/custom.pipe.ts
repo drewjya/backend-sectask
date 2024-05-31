@@ -10,8 +10,6 @@ export class CustomPipe {
       exceptionFactory: (errors) => {
         let obj = {};
         for (const key of errors) {
-          console.log(key);
-
           if (key.children && key.children.length > 0) {
             for (const child of key.children) {
               const arr = child.children.map((e) => {

@@ -33,7 +33,6 @@ export const uploadConfig = (path?: string) => {
         const val = uuid();
         const newName = `${val}.${ext[ext.length - 1]}`;
         const originalName = file.originalname;
-        console.log(newName, originalName);
 
         // Attach the original name to the request object
         if (!req.body) {

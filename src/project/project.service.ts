@@ -102,7 +102,6 @@ export class ProjectService {
         },
       },
     });
-    console.log(project);
 
     if (!project) {
       throw notfound;
@@ -283,6 +282,7 @@ export class ProjectService {
     return {
       ...newMem,
       projectName: project.name,
+      subprojectIds: project.subProjects.map((subproject) => subproject.id),
     };
   }
 
@@ -366,9 +366,9 @@ export class ProjectService {
         projectPicture: true,
         members: {
           select: {
-            userId: true
-          }
-        }
+            userId: true,
+          },
+        },
       },
     });
   }

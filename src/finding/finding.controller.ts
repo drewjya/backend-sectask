@@ -11,8 +11,10 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
+import { SubprojectFindingDto } from 'src/subproject/entity/subproject.entity';
+import { FindingEventHeader } from 'src/types/header';
 import { EventSidebarFinding } from 'src/types/sidebar';
-import { FINDING_ON_MESSAGE } from 'src/utils/event';
+import { FINDING_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
 import { extractUserId } from 'src/utils/extract/userId';
 import {
   EditCVSSProp,
@@ -40,6 +42,20 @@ export class FindingController {
       subprojectId: +subprojectId,
       userId: userId,
     });
+    const newFinding: SubprojectFindingDto = {
+      finding: {
+        findingId: finding.id,
+        name: finding.name,
+        owner: {
+          id: finding.createdBy.id,
+          name: finding.createdBy.name,
+          profilePicture: finding.createdBy.profilePicture,
+        },
+      },
+      subprojectId: finding.subProject.id,
+      type: 'add',
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.FINDING, newFinding);
 
     const newSidebarItem: EventSidebarFinding = {
       finding: {
@@ -66,17 +82,49 @@ export class FindingController {
 
   @UseGuards(AccessTokenGuard)
   @Post('edit/:id')
-  editFinding(
+  async editFinding(
     @Param('id') id: string,
     @Req() req: Request,
     @Body() param: EditFindingDto,
   ) {
     const userId = extractUserId(req);
-    return this.findingService.editFinding({
+    const finding = await this.findingService.editFinding({
       findingId: +id,
       userId: userId,
       properties: param,
     });
+    const newFinding: SubprojectFindingDto = {
+      finding: {
+        findingId: finding.id,
+        name: finding.name,
+        owner: {
+          id: finding.createdBy.id,
+          name: finding.createdBy.name,
+          profilePicture: finding.createdBy.profilePicture,
+        },
+      },
+      subprojectId: finding.subProject.id,
+      type: 'edit',
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.FINDING, newFinding);
+    const newSidebarItem: EventSidebarFinding = {
+      finding: {
+        findingId: finding.id,
+        name: finding.name,
+      },
+      userId: finding.subProject.project.members.map((member) => member.userId),
+      projectId: finding.subProject.project.id,
+      subprojectId: finding.subProject.id,
+      type: 'edit',
+    };
+    this.emitter.emit(FINDING_ON_MESSAGE.SIDEBAR, newSidebarItem);
+
+    const findingHeader: FindingEventHeader = {
+      findingId: finding.id,
+      name: finding.name,
+    };
+
+    this.emitter.emit(FINDING_ON_MESSAGE.HEADER, findingHeader);
   }
 
   @UseGuards(AccessTokenGuard)

@@ -15,11 +15,14 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProjectRole } from '@prisma/client';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
+import { EventFile } from 'src/types/file';
+import { SubprojectEventHeader } from 'src/types/header';
+import { EventSubprojectMember } from 'src/types/member';
 import { EventSidebarSubproject } from 'src/types/sidebar';
 import { PROJECT_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
 import { extractUserId } from 'src/utils/extract/userId';
 import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
-import { AddSubproject } from './entity/subproject.entity';
+import { ProjectSubprojectEvent } from './entity/subproject.entity';
 import {
   CreateSubProjectDto,
   UpdateHeaderDto,
@@ -47,12 +50,12 @@ export class SubprojectController {
       endDate: createProjectDto.endDate,
       startDate: createProjectDto.startDate,
     });
-    const newEntity: AddSubproject = {
+    const newEntity: ProjectSubprojectEvent = {
       type: 'add',
       projectId: newSubproject.projectId,
       subproject: {
         subprojectId: newSubproject.id,
-        starDate: newSubproject.startDate,
+        startDate: newSubproject.startDate,
         endDate: newSubproject.endDate,
         name: newSubproject.name,
       },
@@ -92,61 +95,112 @@ export class SubprojectController {
 
   @UseGuards(AccessTokenGuard)
   @Post(':id/edit')
-  updateHeader(
+  async updateHeader(
     @Param('id') id: string,
     @Body() body: UpdateHeaderDto,
     @Req() req: Request,
   ) {
     const userId = extractUserId(req);
-    return this.subprojectService.updateSubprojectHeader({
+    const subproject = await this.subprojectService.updateSubprojectHeader({
       subprojectId: +id,
       userId: userId,
       name: body.name,
       startDate: body.startDate,
       endDate: body.endDate,
     });
+
+    const newEntity: ProjectSubprojectEvent = {
+      type: 'edit',
+      projectId: subproject.project.id,
+      subproject: {
+        subprojectId: subproject.id,
+        startDate: subproject.startDate,
+        endDate: subproject.endDate,
+        name: subproject.name,
+      },
+    };
+    console.log(newEntity, 'NEW ENTITY');
+
+    this.emitter.emit(PROJECT_ON_MESSAGE.SUBPROJECT, newEntity);
+    const newHeader: SubprojectEventHeader = {
+      name: subproject.name,
+      startDate: subproject.startDate,
+      endDate: subproject.endDate,
+      subprojectId: subproject.id,
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.HEADER, newHeader);
+    const data: EventSidebarSubproject = {
+      projectId: subproject.project.id,
+      subproject: {
+        subprojectId: subproject.id,
+        name: subproject.name,
+      },
+      type: 'edit',
+      userId: subproject.project.members.map((m) => m.userId),
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.SIDEBAR, data);
   }
 
   @UseGuards(AccessTokenGuard)
   @Post(':id/consultant/:memberId')
-  promoteToConsultant(
+  async promoteToConsultant(
     @Param('id') id: string,
     @Param('memberId') memberId: string,
     @Req() req: Request,
   ) {
     const userId = extractUserId(req);
-    return this.subprojectService.promoteToConsultant({
+    const subp = await this.subprojectService.promoteToConsultant({
       subprojectId: +id,
       userId: userId,
       memberId: +memberId,
     });
+    const subprojectMember: EventSubprojectMember = {
+      subprojectId: [subp.id],
+      type: 'promote',
+      member: {
+        id: +memberId,
+        role: ProjectRole.VIEWER,
+        name: subp.userName,
+      },
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.MEMBER, subprojectMember);
   }
 
   @UseGuards(AccessTokenGuard)
   @Post(':id/viewer/:memberId')
-  demoteToViewer(
+  async demoteToViewer(
     @Param('id') id: string,
     @Param('memberId') memberId: string,
     @Req() req: Request,
   ) {
     const userId = extractUserId(req);
-    return this.subprojectService.demoteToViewer({
+    const subp = await this.subprojectService.demoteToViewer({
       subprojectId: +id,
       userId: userId,
       memberId: +memberId,
     });
+    const subprojectMember: EventSubprojectMember = {
+      subprojectId: [subp.id],
+      type: 'demote',
+      member: {
+        id: +memberId,
+        role: ProjectRole.VIEWER,
+        name: subp.userName,
+      },
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.MEMBER, subprojectMember);
   }
   @UseGuards(AccessTokenGuard)
   @UseInterceptors(uploadConfig())
   @Post(':id/report/add')
-  postReport(
+  async postReport(
     @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
     @Req() req: any,
     @Param('id') id: string,
   ) {
     const userId = extractUserId(req);
     const originalName = req.body.originalName;
-    return this.subprojectService.uploadProjectFile({
+    const newFile = await this.subprojectService.uploadProjectFile({
       userId,
       file,
       originalName,
@@ -154,19 +208,31 @@ export class SubprojectController {
       subprojectId: +id,
       type: 'report',
     });
+    const val: EventFile = {
+      file: {
+        contentType: newFile.contentType,
+        createdAt: newFile.createdAt,
+        id: newFile.id,
+        name: newFile.name,
+        originalName: newFile.originalName,
+      },
+      projectId: +id,
+      type: 'add',
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.REPORT, val);
   }
 
   @UseGuards(AccessTokenGuard)
   @UseInterceptors(uploadConfig())
   @Post(':id/attachment/add')
-  postAttachment(
+  async postAttachment(
     @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
     @Req() req: any,
     @Param('id') id: string,
   ) {
     const userId = extractUserId(req);
     const originalName = req.body.originalName;
-    return this.subprojectService.uploadProjectFile({
+    const newFile = await this.subprojectService.uploadProjectFile({
       userId,
       file,
       originalName,
@@ -174,37 +240,73 @@ export class SubprojectController {
       subprojectId: +id,
       type: 'attachment',
     });
+    const val: EventFile = {
+      file: {
+        contentType: newFile.contentType,
+        createdAt: newFile.createdAt,
+        id: newFile.id,
+        name: newFile.name,
+        originalName: newFile.originalName,
+      },
+      projectId: +id,
+      type: 'add',
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.ATTACHMENT, val);
   }
 
   @UseGuards(AccessTokenGuard)
   @Post(':id/report/remove/:fileId')
-  removeReport(
+  async removeReport(
     @Req() req: Request,
     @Param('id') id: string,
     @Param('fileId') fileId: string,
   ) {
     const userId = extractUserId(req);
-    return this.subprojectService.removeProjectFile({
+    const newFile = await this.subprojectService.removeProjectFile({
       userId,
       fileId: +fileId,
       subprojectId: +id,
       acceptRole: ProjectRole.TECHNICAL_WRITER,
     });
+    const val: EventFile = {
+      file: {
+        contentType: newFile.contentType,
+        createdAt: newFile.createdAt,
+        id: newFile.id,
+        name: newFile.name,
+        originalName: newFile.originalName,
+      },
+      projectId: +id,
+      type: 'remove',
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.REPORT, val);
   }
 
   @UseGuards(AccessTokenGuard)
   @Post(':id/attachment/remove/:fileId')
-  removeAttachment(
+  async removeAttachment(
     @Req() req: Request,
     @Param('id') id: string,
     @Param('fileId') fileId: string,
   ) {
     const userId = extractUserId(req);
-    return this.subprojectService.removeProjectFile({
+    const newFile = await this.subprojectService.removeProjectFile({
       userId,
       fileId: +fileId,
       subprojectId: +id,
       acceptRole: ProjectRole.DEVELOPER,
     });
+    const val: EventFile = {
+      file: {
+        contentType: newFile.contentType,
+        createdAt: newFile.createdAt,
+        id: newFile.id,
+        name: newFile.name,
+        originalName: newFile.originalName,
+      },
+      projectId: +id,
+      type: 'remove',
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.ATTACHMENT, val);
   }
 }

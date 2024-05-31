@@ -80,7 +80,6 @@ export class ProjectQuery {
   }
 
   async getSubprojectSidebar(params: { userId: number; projectId: number }) {
-    console.log(params.projectId);
 
     const subprojects = await this.prisma.project.findFirst({
       where: {
@@ -104,7 +103,6 @@ export class ProjectQuery {
       },
     });
 
-    console.log(subprojects, params.projectId);
 
     return subprojects.subProjects;
   }

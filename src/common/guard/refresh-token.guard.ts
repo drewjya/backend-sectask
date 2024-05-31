@@ -10,7 +10,6 @@ export class RefreshTokenGuard extends AuthGuard('jwt-refresh') {
       if (load) {
         return true;
       }
-      console.log(load);
       throw unauthorized;
     } catch (error) {
       throw unauthorized;

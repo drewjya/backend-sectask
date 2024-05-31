@@ -27,6 +27,22 @@ export class FindingService {
     }
     return this.prisma.finding.create({
       include: {
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            profilePicture: {
+              select: {
+                id: true,
+                name: true,
+                originalName: true,
+                contentType: true,
+                imagePath: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
         subProject: {
           select: {
             id: true,
@@ -161,6 +177,11 @@ export class FindingService {
           select: {
             name: true,
             id: true,
+            members: {
+              select: {
+                userId: true,
+              },
+            },
             project: {
               select: {
                 name: true,
@@ -191,7 +212,16 @@ export class FindingService {
       throw noaccess;
     }
 
-    return finding;
+    const isEditor = finding.subProject.members.find(
+      (e) => e.userId === param.userId,
+    );
+
+    delete finding.subProject.members;
+
+    return {
+      ...finding,
+      isEditor: isEditor ? true : false,
+    };
   }
 
   async editFindingProperties(param: {
@@ -261,6 +291,28 @@ export class FindingService {
     let newFInding = await this.prisma.finding.update({
       where: {
         id: param.findingId,
+      },
+      include: {
+        createdBy: {
+          include: {
+            profilePicture: true,
+          },
+        },
+        subProject: {
+          select: {
+            id: true,
+            project: {
+              select: {
+                id: true,
+                members: {
+                  select: {
+                    userId: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       data: {
         name: param.properties.name,

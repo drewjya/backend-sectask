@@ -31,6 +31,8 @@ export const SUBPROJECT_EVENT = {
   ATTACHMENT: 'subprojectAttachment',
   REPORT: 'subprojectReport',
   MEMBER: 'subprojectMember',
+  HEADER: 'subprojectHeader',
+  LOG: 'subprojectLog',
   FINDING: 'subprojectFinding',
 };
 
@@ -51,9 +53,10 @@ export const SUBPROJECT_ON_MESSAGE = {
 
 export const FINDING_EVENT = {
   SIDEBAR: 'findingSidebar',
+  HEADER: 'findingHeader',
   ONLINE: 'onlineFindingMember',
   FINDINGPROP: 'findingProperty',
-  REPORT: 'findingRetest',
+  RETEST: 'findingRetest',
   CVSS: 'findingCVSS',
 };
 
@@ -65,7 +68,7 @@ export const FINDING_MESSAGE = {
 
 export const FINDING_ON_MESSAGE = {
   SIDEBAR: 'finding.sidebar',
-  FINDING: 'finding.header',
+  HEADER: 'finding.header',
   MODIFY: 'finding.tester',
   FINDINGPROP: 'finding.property',
   RETEST: 'finding.retest',
