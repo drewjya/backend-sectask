@@ -11,32 +11,63 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ProjectRole } from '@prisma/client';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
+import { EventSidebarSubproject } from 'src/types/sidebar';
+import { PROJECT_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
 import { extractUserId } from 'src/utils/extract/userId';
 import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
+import { AddSubproject } from './entity/subproject.entity';
 import {
   CreateSubProjectDto,
   UpdateHeaderDto,
 } from './request/subproject.request';
 import { SubprojectService } from './subproject.service';
-import { ProjectRole } from '@prisma/client';
 
 @Controller('subproject')
 export class SubprojectController {
-  constructor(private readonly subprojectService: SubprojectService) {}
+  constructor(
+    private readonly subprojectService: SubprojectService,
+    private emitter: EventEmitter2,
+  ) {}
 
   @UseGuards(AccessTokenGuard)
   @Post('new')
-  create(@Body() createProjectDto: CreateSubProjectDto, @Req() req: Request) {
+  async create(
+    @Body() createProjectDto: CreateSubProjectDto,
+    @Req() req: Request,
+  ) {
     const userId = extractUserId(req);
-    return this.subprojectService.createSubproject({
+    const newSubproject = await this.subprojectService.createSubproject({
       projectId: createProjectDto.projectId,
       userId: userId,
       name: createProjectDto.name,
       endDate: createProjectDto.endDate,
       startDate: createProjectDto.startDate,
     });
+    const newEntity: AddSubproject = {
+      type: 'add',
+      projectId: newSubproject.projectId,
+      subproject: {
+        subprojectId: newSubproject.id,
+        starDate: newSubproject.startDate,
+        endDate: newSubproject.endDate,
+        name: newSubproject.name,
+      },
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.SUBPROJECT, newEntity);
+    const newVal: EventSidebarSubproject = {
+      userId: newSubproject.project.members.map((member) => member.userId),
+      projectId: newSubproject.projectId,
+      subproject: {
+        subprojectId: newSubproject.id,
+        name: newSubproject.name,
+      },
+      type: 'add',
+    };
+    this.emitter.emit(SUBPROJECT_ON_MESSAGE.SIDEBAR, newVal);
   }
 
   @UseGuards(AccessTokenGuard)

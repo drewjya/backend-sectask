@@ -1,17 +1,42 @@
+import { OnEvent } from '@nestjs/event-emitter';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { SocketAuthMiddleware } from 'src/middleware/socket-auth.middleware';
+import { AddSubproject } from 'src/subproject/entity/subproject.entity';
+import { EventFile } from 'src/types/file';
+import { EventHeader } from 'src/types/header';
+import { EventMember } from 'src/types/member';
+import {
+  EventSidebarFinding,
+  EventSidebarFindingItem,
+  EventSidebarProject,
+  EventSidebarProjectItem,
+  EventSidebarSubproject,
+  EventSidebarSubprojectItem,
+} from 'src/types/sidebar';
+import {
+  FINDING_EVENT,
+  FINDING_ON_MESSAGE,
+  PROJECT_EVENT,
+  PROJECT_MESSAGE,
+  PROJECT_ON_MESSAGE,
+  SUBPROJECT_EVENT,
+  SUBPROJECT_ON_MESSAGE,
+  getProjectRoom,
+  getUserRoom,
+} from 'src/utils/event';
 import { EventService } from './event.service';
 import { ASocket } from './interface/a-socket.interface';
 
 @WebSocketGateway({ namespace: 'event' })
 export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  constructor(private readonly eventService: EventService) { }
+  constructor(private readonly eventService: EventService) {}
   private readonly sessions: Map<number, ASocket> = new Map();
   @WebSocketServer()
   server: Server;
@@ -21,12 +46,134 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleConnection(client: ASocket) {
+    client.join(getUserRoom(client.userId));
     this.sessions.set(client.userId, client);
   }
-handleDisconnect(client: ASocket) {
+  handleDisconnect(client: ASocket) {
+    client.leave(getUserRoom(client.userId));
     this.sessions.delete(client.userId);
   }
-  getConnection(userId: number) { 
+  getConnection(userId: number) {
     return this.sessions.get(userId);
+  }
+
+  @SubscribeMessage(PROJECT_MESSAGE.JOIN)
+  onProjectJoin(client: ASocket, data: any) {
+    let val = JSON.parse(data);
+    console.log('JOIN');
+
+    client.join(getProjectRoom(val.projectId));
+  }
+
+  @SubscribeMessage(PROJECT_MESSAGE.LEAVE)
+  onProjectLeave(client: ASocket, data: any) {
+    let val = JSON.parse(data);
+    client.leave(getProjectRoom(val.projectId));
+  }
+
+  @OnEvent(PROJECT_ON_MESSAGE.SUBPROJECT)
+  async handleSubproject(payload: any) {
+    const value: AddSubproject = payload;
+    console.log(value, getProjectRoom(value.projectId));
+
+    this.server
+      .in(getProjectRoom(value.projectId))
+      .emit(PROJECT_EVENT.SUBPROJECT, {
+        subproject: value.subproject,
+        type: value.type,
+      });
+  }
+
+  @OnEvent(PROJECT_ON_MESSAGE.REPORT)
+  async handleAddReportFileProject(payload: any) {
+    const value: EventFile = payload;
+    this.server
+      .in(getProjectRoom(value.projectId))
+      .emit(PROJECT_EVENT.REPORT, value);
+  }
+
+  @OnEvent(PROJECT_ON_MESSAGE.ATTACHMENT)
+  async handleFileAttachmentProject(payload: any) {
+    const value: EventFile = payload;
+    this.server
+      .in(getProjectRoom(value.projectId))
+      .emit(PROJECT_EVENT.ATTACHMENT, value);
+  }
+
+  @OnEvent(PROJECT_ON_MESSAGE.MEMBER)
+  async handleAddMemberProject(payload: any) {
+    const value: EventMember = payload;
+    this.server
+      .in(getProjectRoom(value.docId))
+      .emit(PROJECT_EVENT.MEMBER, value);
+  }
+
+  @OnEvent(PROJECT_ON_MESSAGE.HEADER)
+  async handleProjectHeader(payload: any) {
+    const value: EventHeader = payload;
+    this.server
+      .in(getProjectRoom(value.projectId))
+      .emit(PROJECT_EVENT.HEADER, value);
+  }
+
+  @OnEvent(PROJECT_ON_MESSAGE.LOG)
+  async handleProjectLog(payload: any) {
+    const value: EventHeader = payload;
+    this.server
+      .in(getProjectRoom(value.projectId))
+      .emit(PROJECT_EVENT.LOG, value);
+  }
+
+  @OnEvent(PROJECT_ON_MESSAGE.SIDEBAR)
+  async handleProjectSidebar(payload: any) {
+    const { userId, project, type }: EventSidebarProject = payload;
+
+    for (let index = 0; index < userId.length; index++) {
+      const element = userId[index];
+      const val: EventSidebarProjectItem = {
+        project: project,
+        type: type,
+      };
+      this.server.in(getUserRoom(element)).emit(PROJECT_EVENT.SIDEBAR, val);
+    }
+  }
+
+  @OnEvent(SUBPROJECT_ON_MESSAGE.SIDEBAR)
+  async handleSubProjectSidebar(payload: any) {
+    const { userId, subproject, projectId, type }: EventSidebarSubproject =
+      payload;
+
+    for (let index = 0; index < userId.length; index++) {
+      const element = userId[index];
+      const val: EventSidebarSubprojectItem = {
+        projectId: projectId,
+        subproject: subproject,
+        type: type,
+      };
+      this.server.in(getUserRoom(element)).emit(SUBPROJECT_EVENT.SIDEBAR, val);
+    }
+  }
+
+  @OnEvent(FINDING_ON_MESSAGE.SIDEBAR)
+  async handleFindingSidebar(payload: any) {
+    const {
+      userId,
+      subprojectId,
+      finding,
+      projectId,
+      type,
+    }: EventSidebarFinding = payload;
+    console.log(payload);
+
+    for (let index = 0; index < userId.length; index++) {
+      const element = userId[index];
+      const val: EventSidebarFindingItem = {
+        projectId: projectId,
+        subprojectId: subprojectId,
+        finding: finding,
+        type: type,
+      };
+      this.server.in(getUserRoom(element)).emit(FINDING_EVENT.SIDEBAR, val);
+    }
   }
 }

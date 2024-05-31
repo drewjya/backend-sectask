@@ -10,6 +10,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ProjectModule } from './project/project.module';
 import { SubprojectModule } from './subproject/subproject.module';
 import { UserModule } from './user/user.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UserModule } from './user/user.module';
       serveStaticOptions: {},
       exclude: ['/api/*'],
     }),
+    EventEmitterModule.forRoot(),
     ConfigModule.forRoot({ cache: true, isGlobal: true }),
     PrismaModule,
     UserModule,

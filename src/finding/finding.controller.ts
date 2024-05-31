@@ -8,8 +8,11 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
+import { EventSidebarFinding } from 'src/types/sidebar';
+import { FINDING_ON_MESSAGE } from 'src/utils/event';
 import { extractUserId } from 'src/utils/extract/userId';
 import {
   EditCVSSProp,
@@ -21,16 +24,34 @@ import { FindingService } from './finding.service';
 
 @Controller('finding')
 export class FindingController {
-  constructor(private readonly findingService: FindingService) {}
+  constructor(
+    private readonly findingService: FindingService,
+    private readonly emitter: EventEmitter2,
+  ) {}
 
   @UseGuards(AccessTokenGuard)
   @Post('new/:subprojectId')
-  create(@Param('subprojectId') subprojectId: string, @Req() req: Request) {
+  async create(
+    @Param('subprojectId') subprojectId: string,
+    @Req() req: Request,
+  ) {
     const userId = extractUserId(req);
-    return this.findingService.create({
+    const finding = await this.findingService.create({
       subprojectId: +subprojectId,
       userId: userId,
     });
+
+    const newSidebarItem: EventSidebarFinding = {
+      finding: {
+        findingId: finding.id,
+        name: finding.name,
+      },
+      userId: finding.subProject.project.members.map((member) => member.userId),
+      projectId: finding.subProject.project.id,
+      subprojectId: finding.subProject.id,
+      type: 'add',
+    };
+    this.emitter.emit(FINDING_ON_MESSAGE.SIDEBAR, newSidebarItem);
   }
 
   @UseGuards(AccessTokenGuard)

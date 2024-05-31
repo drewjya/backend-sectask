@@ -210,6 +210,19 @@ export class SubprojectService {
           },
         },
       },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            members: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+        },
+      },
     });
     return subproject;
   }

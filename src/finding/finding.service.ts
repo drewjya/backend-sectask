@@ -26,6 +26,23 @@ export class FindingService {
       throw noaccess;
     }
     return this.prisma.finding.create({
+      include: {
+        subProject: {
+          select: {
+            id: true,
+            project: {
+              select: {
+                id: true,
+                members: {
+                  select: {
+                    userId: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       data: {
         name: 'Untitled Finding',
         subProject: {

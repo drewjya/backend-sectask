@@ -15,7 +15,13 @@ import {
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProjectRole } from '@prisma/client';
+import { EventFile } from 'src/types/file';
+import { EventHeader } from 'src/types/header';
+import { EventMember } from 'src/types/member';
+import { EventSidebarProject } from 'src/types/sidebar';
+import { PROJECT_ON_MESSAGE } from 'src/utils/event';
 import { extractUserId } from 'src/utils/extract/userId';
 import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
 import { ProjectService } from './project.service';
@@ -27,12 +33,28 @@ import {
 
 @Controller('project')
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(
+    private readonly projectService: ProjectService,
+    private emitter: EventEmitter2,
+  ) {}
   @UseGuards(AccessTokenGuard)
   @Post('new')
-  create(@Body() createProjectDto: CreateProjectDto, @Req() req: Request) {
+  async create(
+    @Body() createProjectDto: CreateProjectDto,
+    @Req() req: Request,
+  ) {
     const userId = extractUserId(req);
-    return this.projectService.create(createProjectDto, userId);
+    const projects = await this.projectService.create(createProjectDto, userId);
+    const data: EventSidebarProject = {
+      project: {
+        projectId: projects.id,
+        name: projects.name,
+      },
+      type: 'add',
+      userId: [userId, ...createProjectDto.members.map((m) => m.userId)],
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.SIDEBAR, data);
+    return data;
   }
 
   @UseGuards(AccessTokenGuard)
@@ -110,33 +132,71 @@ export class ProjectController {
   }
   @UseGuards(AccessTokenGuard)
   @Post(':id/member')
-  addMember(
+  async addMember(
     @Req() req: Request,
     @Param('id') id: string,
     @Body() body: AddMemberDto,
   ) {
     const userId = extractUserId(req);
-    return this.projectService.addMember({
+    const newMem = await this.projectService.addMember({
       adminId: userId,
       projectId: +id,
       userId: body.userId,
       role: body.role,
     });
+    const val: EventMember = {
+      docId: +id,
+      type: 'add',
+      member: {
+        name: newMem.name,
+        id: newMem.id,
+        role: body.role,
+      },
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.MEMBER, val);
+    const data: EventSidebarProject = {
+      project: {
+        projectId: +id,
+        name: newMem.projectName,
+      },
+      type: 'add',
+      userId: [newMem.id],
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.SIDEBAR, data);
   }
 
   @UseGuards(AccessTokenGuard)
   @Delete(':id/member')
-  removeMember(
+  async removeMember(
     @Req() req: Request,
     @Param('id') id: string,
     @Body() body: RemoveMemberDto,
   ) {
     const userId = extractUserId(req);
-    return this.projectService.removeMember({
+    const newMem = await this.projectService.removeMember({
       adminId: userId,
       projectId: +id,
       userId: body.userId,
     });
+    const val: EventMember = {
+      docId: +id,
+      type: 'remove',
+      member: {
+        name: newMem.name,
+        id: newMem.id,
+        role: ProjectRole.VIEWER,
+      },
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.MEMBER, val);
+    const data: EventSidebarProject = {
+      project: {
+        projectId: +id,
+        name: '',
+      },
+      type: 'remove',
+      userId: [newMem.id],
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.SIDEBAR, data);
   }
 
   @UseGuards(AccessTokenGuard)
@@ -148,58 +208,103 @@ export class ProjectController {
 
   @UseGuards(AccessTokenGuard)
   @Post(':id/edit')
-  editHeaderProject(
+  async editHeaderProject(
     @Req() req: Request,
     @Param('id') id: string,
     @Body() body: CreateProjectDto,
   ) {
     const userId = extractUserId(req);
-    return this.projectService.editHeader({
+    const newData = await this.projectService.editHeader({
       userId: userId,
       projectId: +id,
       endDate: body.endDate,
       name: body.name,
       startDate: body.startDate,
     });
+
+    const newHeader: EventHeader = {
+      name: newData.name,
+      startDate: newData.startDate,
+      endDate: newData.endDate,
+      projectId: +id,
+      picture: newData.projectPicture
+        ? {
+            contentType: newData.projectPicture.contentType,
+            createdAt: newData.projectPicture.createdAt,
+            id: newData.projectPicture.id,
+            name: newData.projectPicture.name,
+            originalName: newData.projectPicture.originalName,
+          }
+        : undefined,
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.HEADER, newHeader);
+    const data: EventSidebarProject = {
+      project: {
+        projectId: +id,
+        name: newData.name,
+      },
+      type: 'edit',
+      userId: newData.members.map((m) => m.userId),
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.SIDEBAR, data);
+    return newData;
   }
 
   @UseGuards(AccessTokenGuard)
   @UseInterceptors(uploadConfig())
   @Post(':id/picture')
-  postImage(
+  async postImage(
     @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
     @Req() req: any,
     @Param('id') id: string,
   ) {
     const userId = extractUserId(req);
-    return this.projectService.editProfileProject({
+    const newData = await this.projectService.editProfileProject({
       userId,
       file,
       projectId: +id,
     });
+    const newHeader: EventHeader = {
+      name: newData.name,
+      startDate: newData.startDate,
+      endDate: newData.endDate,
+      projectId: +id,
+      picture: newData.projectPicture,
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.HEADER, newHeader);
+    return newHeader;
   }
 
   @UseGuards(AccessTokenGuard)
   @Delete(':id/picture')
-  deleteImage(@Req() req: any, @Param('id') id: string) {
+  async deleteImage(@Req() req: any, @Param('id') id: string) {
     const userId = extractUserId(req);
-    return this.projectService.deleteProjectProfile({
+    const newData = await this.projectService.deleteProjectProfile({
       userId,
       projectId: +id,
     });
+    const newHeader: EventHeader = {
+      name: newData.name,
+      startDate: newData.startDate,
+      endDate: newData.endDate,
+      projectId: +id,
+      picture: newData.projectPicture,
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.HEADER, newHeader);
+    return newHeader;
   }
 
   @UseGuards(AccessTokenGuard)
   @UseInterceptors(uploadConfig())
   @Post(':id/report/add')
-  postReport(
+  async postReport(
     @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
     @Req() req: any,
     @Param('id') id: string,
   ) {
     const userId = extractUserId(req);
     const originalName = req.body.originalName;
-    return this.projectService.uploadProjectFile({
+    const newFile = await this.projectService.uploadProjectFile({
       userId,
       file,
       originalName,
@@ -207,19 +312,31 @@ export class ProjectController {
       projectId: +id,
       type: 'report',
     });
+    const val: EventFile = {
+      file: {
+        contentType: newFile.contentType,
+        createdAt: newFile.createdAt,
+        id: newFile.id,
+        name: newFile.name,
+        originalName: newFile.originalName,
+      },
+      projectId: +id,
+      type: 'add',
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.REPORT, val);
   }
 
   @UseGuards(AccessTokenGuard)
   @UseInterceptors(uploadConfig())
   @Post(':id/attachment/add')
-  postAttachment(
+  async postAttachment(
     @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
     @Req() req: any,
     @Param('id') id: string,
   ) {
     const userId = extractUserId(req);
     const originalName = req.body.originalName;
-    return this.projectService.uploadProjectFile({
+    const newFile = await this.projectService.uploadProjectFile({
       userId,
       file,
       originalName,
@@ -227,37 +344,73 @@ export class ProjectController {
       projectId: +id,
       type: 'attachment',
     });
+    const val: EventFile = {
+      file: {
+        contentType: newFile.contentType,
+        createdAt: newFile.createdAt,
+        id: newFile.id,
+        name: newFile.name,
+        originalName: newFile.originalName,
+      },
+      projectId: +id,
+      type: 'add',
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.ATTACHMENT, val);
   }
 
   @UseGuards(AccessTokenGuard)
   @Post(':id/report/remove/:fileId')
-  removeReport(
+  async removeReport(
     @Req() req: Request,
     @Param('id') id: string,
     @Param('fileId') fileId: string,
   ) {
     const userId = extractUserId(req);
-    return this.projectService.removeProjectFile({
+    const newFile = await this.projectService.removeProjectFile({
       userId,
       fileId: +fileId,
       projectId: +id,
       acceptRole: [ProjectRole.TECHNICAL_WRITER],
     });
+    const val: EventFile = {
+      file: {
+        contentType: newFile.contentType,
+        createdAt: newFile.createdAt,
+        id: newFile.id,
+        name: newFile.name,
+        originalName: newFile.originalName,
+      },
+      projectId: +id,
+      type: 'remove',
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.REPORT, val);
   }
 
   @UseGuards(AccessTokenGuard)
   @Post(':id/attachment/remove/:fileId')
-  removeAttachment(
+  async removeAttachment(
     @Req() req: Request,
     @Param('id') id: string,
     @Param('fileId') fileId: string,
   ) {
     const userId = extractUserId(req);
-    return this.projectService.removeProjectFile({
+    const newFile = await this.projectService.removeProjectFile({
       userId,
       fileId: +fileId,
       projectId: +id,
       acceptRole: [ProjectRole.DEVELOPER],
     });
+    const val: EventFile = {
+      file: {
+        contentType: newFile.contentType,
+        createdAt: newFile.createdAt,
+        id: newFile.id,
+        name: newFile.name,
+        originalName: newFile.originalName,
+      },
+      projectId: +id,
+      type: 'remove',
+    };
+    this.emitter.emit(PROJECT_ON_MESSAGE.ATTACHMENT, val);
   }
 }

@@ -3,7 +3,7 @@ import { ProjectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
-import { notfound } from 'src/utils/exception/common.exception';
+import { noaccess, notfound } from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
 import { CreateProjectDto } from './request/project.request';
 
@@ -102,6 +102,8 @@ export class ProjectService {
         },
       },
     });
+    console.log(project);
+
     if (!project) {
       throw notfound;
     }
@@ -109,7 +111,7 @@ export class ProjectService {
       (member) => member.member.id === userId,
     );
     if (!isMember) {
-      throw notfound;
+      throw noaccess;
     }
     const members = project.members.map((member) => {
       return {
@@ -267,13 +269,21 @@ export class ProjectService {
         },
       },
     });
+    const newMem = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId,
+      },
+    });
     await this.projectQuery.addProjectRecentActivities({
       projectId: project.id,
       title: `Project ${project.name}`,
       description: `${user.name} has been added`,
     });
 
-    return project;
+    return {
+      ...newMem,
+      projectName: project.name,
+    };
   }
 
   async removeMember(param: {
@@ -328,7 +338,7 @@ export class ProjectService {
       description: `${findProjectMember.member.name} has been removed`,
     });
 
-    return true;
+    return findProjectMember.member;
   }
 
   async editHeader(param: {
@@ -352,6 +362,14 @@ export class ProjectService {
         startDate: param.startDate,
         endDate: param.endDate,
       },
+      include: {
+        projectPicture: true,
+        members: {
+          select: {
+            userId: true
+          }
+        }
+      },
     });
   }
 
@@ -366,7 +384,7 @@ export class ProjectService {
       userId: param.userId,
       role: [ProjectRole.PM],
     });
-    const project = await this.prisma.file.create({
+    await this.prisma.file.create({
       data: {
         name: param.file.filename,
 
@@ -379,7 +397,27 @@ export class ProjectService {
         },
       },
     });
-    return project;
+
+    return this.prisma.project.findFirst({
+      where: {
+        id: param.projectId,
+      },
+      select: {
+        name: true,
+        startDate: true,
+        endDate: true,
+        id: true,
+        projectPicture: {
+          select: {
+            contentType: true,
+            createdAt: true,
+            id: true,
+            name: true,
+            originalName: true,
+          },
+        },
+      },
+    });
   }
 
   async deleteProjectProfile(param: {
@@ -404,7 +442,26 @@ export class ProjectService {
     });
 
     unlinkFile(file.imagePath);
-    return;
+    return this.prisma.project.findFirst({
+      where: {
+        id: param.projectId,
+      },
+      select: {
+        name: true,
+        startDate: true,
+        endDate: true,
+        id: true,
+        projectPicture: {
+          select: {
+            contentType: true,
+            createdAt: true,
+            id: true,
+            name: true,
+            originalName: true,
+          },
+        },
+      },
+    });
   }
 
   async uploadProjectFile(param: {

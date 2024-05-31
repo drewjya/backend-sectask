@@ -4,6 +4,9 @@ export const PROJECT_EVENT = {
   REPORT: 'projectReport',
   MEMBER: 'projectMember',
   SUBPROJECT: 'projectSubProject',
+  HEADER: 'projectHeader',
+  LOG: 'projectLog',
+  SIDEBAR: 'projectSidebar',
 };
 
 export const PROJECT_MESSAGE = {
@@ -13,17 +16,17 @@ export const PROJECT_MESSAGE = {
 };
 
 export const PROJECT_ON_MESSAGE = {
-  PROJECT_HEADER: 'project.header',
-  ADD_MEMBER: 'project.member.add',
-  REMOVE_MEMBER: 'project.member.remove',
-  ADD_SUBPROJECT: 'project.subproject.add',
-  ADD_REPORT: 'project.report.add',
-  ADD_ATTACHMENT: 'project.attachment.add',
-  REMOVE_REPORT: 'project.report.remove',
-  REMOVE_ATTACHMENT: 'project.attachment.remove',
+  HEADER: 'project.header',
+  SIDEBAR: 'project.sidebar',
+  MEMBER: 'project.member',
+  SUBPROJECT: 'project.subproject',
+  REPORT: 'project.report',
+  ATTACHMENT: 'project.attachment',
+  LOG: 'project.log',
 };
 
 export const SUBPROJECT_EVENT = {
+  SIDEBAR: 'subprojectSidebar',
   ONLINE: 'onlineSubprojectMember',
   ATTACHMENT: 'subprojectAttachment',
   REPORT: 'subprojectReport',
@@ -37,17 +40,17 @@ export const SUBPROJECT_MESSAGE = {
   ONLINE_MEMBER: 'getOnlineSubprojectMember',
 };
 export const SUBPROJECT_ON_MESSAGE = {
-  SUBPROJECT_HEADER: 'subproject.header',
-  ADD_MEMBER: 'subproject.member.add',
-  REMOVE_MEMBER: 'subproject.member.remove',
-  ADD_FINDING: 'subproject.finding.add',
-  ADD_REPORT: 'subproject.report.add',
-  ADD_ATTACHMENT: 'subproject.attachment.add',
-  REMOVE_REPORT: 'subproject.report.remove',
-  REMOVE_ATTACHMENT: 'subproject.attachment.remove',
+  HEADER: 'subproject.header',
+  MEMBER: 'subproject.member',
+  FINDING: 'subproject.finding',
+  REPORT: 'subproject.report',
+  ATTACHMENT: 'subproject.attachment',
+  SIDEBAR: 'subproject.sidebar',
+  LOG: 'subproject.log',
 };
 
 export const FINDING_EVENT = {
+  SIDEBAR: 'findingSidebar',
   ONLINE: 'onlineFindingMember',
   FINDINGPROP: 'findingProperty',
   REPORT: 'findingRetest',
@@ -61,32 +64,17 @@ export const FINDING_MESSAGE = {
 };
 
 export const FINDING_ON_MESSAGE = {
-  FINDING_HEADER: 'finding.header',
-  MODIFY_TESTER: 'finding.tester.modify',
-  EDIT_FINDINGPROP: 'finding.property.edit',
-  EDIT_RETEST: 'finding.retest.edit',
-  EDIT_CVSS: 'finding.cvss.edit',
-};
-
-export const SIDEBAR_EVENT = {
-  PROJECT: 'projectSidebar',
-  SUBPROJECT: 'subprojectSidebar',
-  FINDING: 'findingSidebar',
-};
-
-export const SIDEBAR_MESSAGE = {
-  PROJECT: 'projectSidebar',
-  SUBPROJECT: 'subprojectSidebar',
-  FINDING: 'findingSidebar',
-};
-
-export const SIDEBAR_ON_MESSAGE = {
-  PROJECT: 'project.sidebar',
-  SUBPROJECT: 'subproject.sidebar',
-  FINDING: 'finding.sidebar',
+  SIDEBAR: 'finding.sidebar',
+  FINDING: 'finding.header',
+  MODIFY: 'finding.tester',
+  FINDINGPROP: 'finding.property',
+  RETEST: 'finding.retest',
+  CVSS: 'finding.cvss',
 };
 
 export const getProjectRoom = (projectId: number) => `project:${projectId}`;
 export const getSubProjectRoom = (subprojectId: number) =>
   `subproject:${subprojectId}`;
 export const getFindingRoom = (findingId: number) => `finding:${findingId}`;
+
+export const getUserRoom = (userId: number) => `user:${userId}`;
