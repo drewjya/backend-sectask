@@ -140,74 +140,88 @@ model SubprojectMember {
 }
 
 model Finding {
-  id          Int     @id @default(autoincrement())
-  name        String
-  createdBy   User    @relation(fields: [userId], references: [id])
-  category    String?
-  location    String?
-  method      String?
-  environment String?
-  application String?
-  impact      String?
-  likelihood  String?
-
+  id           Int       @id @default(autoincrement())
+  name         String
+  createdBy    User      @relation(fields: [userId], references: [id])
+  category     String?
+  location     String?
+  method       String?
+  environment  String?
+  application  String?
+  impact       String?
+  likelihood   String?
   latestUpdate DateTime?
 
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
   deletedAt  DateTime?
-  cvssDetail CvssDetail @relation(fields: [cvssDetailId], references: [id])
+  cvssDetail CvssDetail?
   status     String?
   releases   String?
-
-  descriptionId String
-  description   Document @relation("findingDescription", fields: [descriptionId], references: [id])
-
-  threatAndRiskId String
-  threatAndRisk   Document @relation("findingThreatAndRisk", fields: [threatAndRiskId], references: [id])
 
   subProject   SubProject @relation(fields: [subProjectId], references: [id])
   subProjectId Int
   userId       Int
 
   chatRoom ChatRoom[]
-
+  document DocumentWrapper[]
   testerFinding TesterFinding[]
-  cvssDetailId  Int
+
+  @@map("findings")
 }
 
 model TesterFinding {
   id        Int     @id @default(autoincrement())
   user      User    @relation(fields: [userId], references: [id])
-  finding   Finding @relation(fields: [findingId], references: [id])
+  finding   Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
   userId    Int
   findingId Int
   active    Boolean @default(true)
 
   @@unique([userId, findingId])
+  @@map("tester_findings")
+}
+
+model DocumentWrapper{
+  id        Int     @id @default(autoincrement())
+  finding   Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  findingId Int
+  document Document @relation(fields: [documentId], references: [id])
+  documentId String @unique
+  
+  type DocType
+}
+
+enum DocType {
+  DESCRIPTION
+  THREAT
 }
 
 model Document {
   id   String @id
   data Bytes
-
-  findingDescription   Finding[] @relation("findingDescription")
-  findingThreatAndRisk Finding[] @relation("findingThreatAndRisk")
+  
+  wrapper DocumentWrapper?
+  
+  
 }
 
 model CvssDetail {
-  id      Int       @id @default(autoincrement())
-  data    Json
-  Finding Finding[]
+  id        Int     @id @default(autoincrement())
+  data      Json
+  finding   Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  findingId Int     @unique
 }
 
 model ChatRoom {
   id        Int      @id @default(autoincrement())
+  title     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   chats     Chat[]
 
-  finding Finding[]
+  finding   Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  findingId Int
 }
 
 model Chat {

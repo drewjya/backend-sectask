@@ -44,6 +44,7 @@ import {
 } from 'src/utils/event';
 import { EventService } from './event.service';
 import { ASocket } from './interface/a-socket.interface';
+import { Finding } from 'src/finding/entities/finding.entity';
 
 @WebSocketGateway({ namespace: 'event' })
 export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -284,5 +285,10 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
   onFindingRetest(payload: any) { }
 
   @OnEvent(FINDING_ON_MESSAGE.CVSS)
-  onFindingCVSS(payload: any) { }
+  onFindingCVSS(payload: {
+    findingId: number,
+    cvss:any
+  }) { 
+    this.server.in(getFindingRoom(payload.findingId)).emit(FINDING_EVENT.CVSS, payload)
+  }
 }

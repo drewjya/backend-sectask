@@ -3,13 +3,12 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsDate,
-  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxDate,
 } from 'class-validator';
-import { CVSS_VALUE } from '../finding.enum';
+
 
 export class EditFindingDto {
   @IsNotEmpty()
@@ -59,130 +58,162 @@ export class EditResetsProp {
 }
 
 export class EditCVSSProp {
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  av: CVSS_VALUE;
+  AV: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  ac: CVSS_VALUE;
+  AC: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  at: CVSS_VALUE;
+  AT: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  pr: CVSS_VALUE;
+  PR: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  ui: CVSS_VALUE;
+  UI: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  vc: CVSS_VALUE;
+  VC: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  vi: CVSS_VALUE;
+  VI: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  va: CVSS_VALUE;
+  VA: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  sc: CVSS_VALUE;
+  SC: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  si: CVSS_VALUE;
+  SI: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  sa: CVSS_VALUE;
+  SA: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  s: CVSS_VALUE;
+  S: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  au: CVSS_VALUE;
+  AU: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  r: CVSS_VALUE;
+  R: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  v: CVSS_VALUE;
+  V: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  re: CVSS_VALUE;
+  RE: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  u: CVSS_VALUE;
+  U: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  mav: CVSS_VALUE;
+  MAV: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  mac: CVSS_VALUE;
+  MAC: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  mat: CVSS_VALUE;
+  MAT: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  mpr: CVSS_VALUE;
+  MPR: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  mui: CVSS_VALUE;
+  MUI: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  mvc: CVSS_VALUE;
+  MVC: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  mvi: CVSS_VALUE;
+  MVI: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  mva: CVSS_VALUE;
+  MVA: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  msc: CVSS_VALUE;
+  MSC: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  msi: CVSS_VALUE;
+  MSI: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  msa: CVSS_VALUE;
+  MSA: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  cr: CVSS_VALUE;
+  CR: string;
 
-  @IsEnum(CVSS_VALUE)
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  ir: CVSS_VALUE;
-  
-  @IsEnum(CVSS_VALUE)
+  IR: string;
+
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  ar: CVSS_VALUE;
-  @IsEnum(CVSS_VALUE)
+  AR: string;
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  e: CVSS_VALUE;
+  E: string;
 }

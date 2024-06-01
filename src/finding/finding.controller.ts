@@ -157,17 +157,22 @@ export class FindingController {
   }
   @UseGuards(AccessTokenGuard)
   @Post('cvss/:id')
-  editCVSS(
+  async editCVSS(
     @Param('id') id: string,
     @Req() req: Request,
     @Body() param: EditCVSSProp,
   ) {
     const userId = extractUserId(req);
-    return this.findingService.editCVSS({
+    const cvss = await this.findingService.editCVSS({
       findingId: +id,
       userId: userId,
       cvss: param,
     });
+    this.emitter.emit(FINDING_ON_MESSAGE.CVSS, {
+      findingId:cvss.findingId,
+      cvss: cvss.data
+    });
+    return cvss
   }
 
   @UseGuards(AccessTokenGuard)

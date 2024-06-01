@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { ProjectRole } from '@prisma/client';
+import { DocType, ProjectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { uuid } from 'src/common/uuid';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { noaccess } from 'src/utils/exception/common.exception';
-import { CVSS_VALUE, basicCvss } from './finding.enum';
+import { noaccess, notfound } from 'src/utils/exception/common.exception';
+import { basicCvss } from './finding.enum';
 
 @Injectable()
 export class FindingService {
@@ -25,83 +25,140 @@ export class FindingService {
     if (!member) {
       throw noaccess;
     }
-    return this.prisma.finding.create({
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            profilePicture: {
-              select: {
-                id: true,
-                name: true,
-                originalName: true,
-                contentType: true,
-                imagePath: true,
-                createdAt: true,
-              },
+    // const cr = 
+    const newFind = await this.prisma.$transaction(async (tx) => {
+      const newFinding = await this.prisma.finding.create({
+
+        data: {
+          name: 'Untitled Finding',
+          subProject: {
+            connect: {
+              id: param.subprojectId,
             },
           },
-        },
-        subProject: {
-          select: {
-            id: true,
-            project: {
-              select: {
-                id: true,
-                members: {
-                  select: {
-                    userId: true,
-                  },
+          createdBy: {
+            connect: {
+              id: param.userId,
+            },
+          },
+
+          cvssDetail: {
+            create: {
+              data: basicCvss(),
+            },
+          },
+          testerFinding: {
+            create: {
+              user: {
+                connect: {
+                  id: param.userId,
                 },
               },
             },
           },
         },
-      },
-      data: {
-        name: 'Untitled Finding',
-        subProject: {
-          connect: {
-            id: param.subprojectId,
+      });
+      const wrapper1 = await this.prisma.documentWrapper.create({
+        data:
+        {
+          type: "DESCRIPTION",
+          document: {
+            create: {
+              data: Buffer.from(''),
+              id: uuid(),
+            }
           },
-        },
-        createdBy: {
-          connect: {
-            id: param.userId,
+
+          finding: {
+            connect: {
+              id: newFinding.id,
+            }
+          }
+        }
+      })
+      const wrapper2 = await this.prisma.documentWrapper.create({
+        data:
+        {
+          type: "THREAT",
+          finding: {
+            connect: {
+              id: newFinding.id,
+            }
           },
+          document: {
+            create: {
+              data: Buffer.from(''),
+              id: uuid(),
+            }
+          }
+        }
+      })
+
+      return await this.prisma.finding.findFirst({
+        where: {
+          id: newFinding.id,
         },
-        chatRoom: {
-          create: {},
-        },
-        cvssDetail: {
-          create: {
-            data: basicCvss(),
+        include: {
+          document: {
+            select: {
+              document: {
+                select: {
+                  id: true,
+                },
+              },
+              type: true,
+              findingId: true,
+            }
           },
-        },
-        testerFinding: {
-          create: {
-            user: {
-              connect: {
-                id: param.userId,
+          cvssDetail: {
+            select: {
+              data: true,
+              id: true,
+            }
+          },
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              profilePicture: {
+                select: {
+                  id: true,
+                  name: true,
+                  originalName: true,
+                  contentType: true,
+                  imagePath: true,
+                  createdAt: true,
+                },
               },
             },
           },
-        },
-        description: {
-          create: {
-            id: uuid(),
-            data: Buffer.from(''),
+          subProject: {
+            select: {
+              id: true,
+              project: {
+                select: {
+                  id: true,
+                  members: {
+                    select: {
+                      userId: true,
+                    },
+                  },
+                },
+              },
+            },
           },
-        },
-        threatAndRisk: {
-          create: {
-            id: uuid(),
-            data: Buffer.from(''),
-          },
-        },
-      },
-    });
+        }
+      })
+    })
+
+    const description = newFind.document.find((e) => e.type === DocType.DESCRIPTION)
+    const threat = newFind.document.find((e) => e.type === DocType.THREAT)
+    delete newFind.document
+    return {
+      ...newFind,
+      description,
+      threat
+    }
   }
 
   async notifyEdit(param: { userId: number; findingId: number }) {
@@ -149,7 +206,7 @@ export class FindingService {
   }
 
   async findDetail(param: { userId: number; findingId: number }) {
-    const finding = await this.prisma.finding.findUnique({
+    const finding = await this.prisma.finding.findFirst({
       where: {
         id: param.findingId,
         AND: {
@@ -166,6 +223,17 @@ export class FindingService {
       },
       include: {
         cvssDetail: true,
+
+        document: {
+          select: {
+            document: {
+              select: {
+                id: true,
+              },
+            },
+            type: true,
+          }
+        },
         createdBy: {
           select: {
             profilePicture: true,
@@ -217,10 +285,16 @@ export class FindingService {
     );
 
     delete finding.subProject.members;
+    const description = finding.document.find((e) => e.type === DocType.DESCRIPTION)
+    const threat = finding.document.find((e) => e.type === DocType.THREAT)
+    delete finding.document
+
 
     return {
       ...finding,
       isEditor: isEditor ? true : false,
+      descriptionId: description.document.id,
+      threatAndRiskId: threat.document.id
     };
   }
 
@@ -362,38 +436,38 @@ export class FindingService {
 
   async editCVSS(param: {
     cvss: {
-      av: CVSS_VALUE;
-      ac: CVSS_VALUE;
-      at: CVSS_VALUE;
-      pr: CVSS_VALUE;
-      ui: CVSS_VALUE;
-      vc: CVSS_VALUE;
-      vi: CVSS_VALUE;
-      va: CVSS_VALUE;
-      sc: CVSS_VALUE;
-      si: CVSS_VALUE;
-      sa: CVSS_VALUE;
-      s: CVSS_VALUE;
-      au: CVSS_VALUE;
-      r: CVSS_VALUE;
-      v: CVSS_VALUE;
-      re: CVSS_VALUE;
-      u: CVSS_VALUE;
-      mav: CVSS_VALUE;
-      mac: CVSS_VALUE;
-      mat: CVSS_VALUE;
-      mpr: CVSS_VALUE;
-      mui: CVSS_VALUE;
-      mvc: CVSS_VALUE;
-      mvi: CVSS_VALUE;
-      mva: CVSS_VALUE;
-      msc: CVSS_VALUE;
-      msi: CVSS_VALUE;
-      msa: CVSS_VALUE;
-      cr: CVSS_VALUE;
-      ir: CVSS_VALUE;
-      ar: CVSS_VALUE;
-      e: CVSS_VALUE;
+      AV: string;
+      AC: string;
+      AT: string;
+      PR: string;
+      UI: string;
+      VC: string;
+      VI: string;
+      VA: string;
+      SC: string;
+      SI: string;
+      SA: string;
+      S: string;
+      AU: string;
+      R: string;
+      V: string;
+      RE: string;
+      U: string;
+      MAV: string;
+      MAC: string;
+      MAT: string;
+      MPR: string;
+      MUI: string;
+      MVC: string;
+      MVI: string;
+      MVA: string;
+      MSC: string;
+      MSI: string;
+      MSA: string;
+      CR: string;
+      IR: string;
+      AR: string;
+      E: string;
     };
     userId: number;
     findingId: number;
@@ -402,19 +476,21 @@ export class FindingService {
       where: { id: param.findingId },
       select: {
         subProjectId: true,
-        cvssDetailId: true,
+        cvssDetail: true
       },
     });
+    
     if (!finding) {
       throw noaccess;
     }
+    console.log(finding);
     await this.authorizedEditor({
       subprojectId: finding.subProjectId,
       userId: param.userId,
     });
     return this.prisma.cvssDetail.update({
       where: {
-        id: finding.cvssDetailId,
+        id: finding.cvssDetail.id,
       },
       data: {
         data: param.cvss,
@@ -478,30 +554,23 @@ export class FindingService {
         throw noaccess;
       }
     } else {
-      const subprojectMember = await this.prisma.subprojectMember.findFirst({
-        where: {
-          subprojectId: param.subprojectId,
-          userId: param.userId,
+      const subpro = await this.prisma.subProject.findFirst({
+        where:{
+          id: param.subprojectId
         },
-        include: {
-          subproject: {
-            select: {
-              project: {
-                select: {
-                  members: {
-                    select: {
-                      userId: true,
-                      role: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (!subprojectMember) {
+        select:{
+          members:{
+            select:{
+              user: true
+            }
+          }
+        }
+      })
+      if (!subpro) {
+        throw notfound
+      }
+      const member = subpro.members.find((e)=>e.user.id===param.userId)
+      if (!member) {
         throw noaccess;
       }
 
