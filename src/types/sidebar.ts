@@ -4,7 +4,7 @@ export type EventSidebarProject = {
     projectId: number;
     name: string;
   };
-  type: string;
+  type: 'edit'|'add'|'remove';
 };
 
 export type EventSidebarProjectItem = {

@@ -1,6 +1,8 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { ProjectRole } from '@prisma/client';
+import { File, ProjectRole } from '@prisma/client';
+import { LogQuery } from 'src/common/query/log.query';
 import { ProjectQuery } from 'src/common/query/project.query';
+import { OutputService } from 'src/output/output.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
 import { noaccess, notfound } from 'src/utils/exception/common.exception';
@@ -9,7 +11,7 @@ import { unlinkFile } from 'src/utils/pipe/file.pipe';
 @Injectable()
 export class SubprojectService {
   private projectQuery: ProjectQuery;
-  constructor(private prisma: PrismaService) {
+  constructor(private prisma: PrismaService, private output: OutputService) {
     this.projectQuery = new ProjectQuery(prisma);
   }
   private async editSubprojectMembers(param: {
@@ -72,6 +74,8 @@ export class SubprojectService {
           },
         },
       });
+
+      
     } else {
       if (!projectMembers.subprojectMember) {
         throw new ApiException({
@@ -93,16 +97,40 @@ export class SubprojectService {
           id: check.id,
         },
       });
+      const findingIds = subproject.findings.map((finding) => {
+        return finding.id;
+      });
+      await this.prisma.testerFinding.updateMany({
+        where: {
+          findingId: {
+            in: findingIds,
+          },
+          userId: param.memberId,
+        },
+        data: {
+          active: false,
+        },
+      });
     }
-    await this.projectQuery.addSubProjectRecentActivities({
-      subprojectId: param.subprojectId,
-      title: `Member ${param.add ? 'Promotion' : 'Demoted'}`,
-      description: `Member has been ${param.add ? 'Promoted To Consultant' : 'Demoted To Viewer'} by [${param.userId}]`,
-    });
-    return {
-      ...subproject,
-      userName: projectMembers.member.name,
-    };
+    let query = LogQuery.promoteMemberSubproject({
+      memberName:projectMembers.member.name,
+      subprojectId:param.subprojectId
+    })
+    if (!param.add) {
+      query = LogQuery.demoteMemberSubproject({
+        memberName:projectMembers.member.name,
+        subprojectId: param.subprojectId
+      })
+    }
+    const log = await this.prisma.subProjectLog.create(query)    
+    let type:'promote'|'demote' = 'promote'
+    if (!param.add) {
+      type = 'demote'
+    }
+    
+    this.output.subprojectLog(param.subprojectId, log)
+    this.output.subprojectMember(type, [subproject.id], ProjectRole.VIEWER, projectMembers.member)
+    return;
   }
 
   async findDetail(param: { subprojectId: number; userId: number }) {
@@ -195,6 +223,11 @@ export class SubprojectService {
       userId: param.userId,
       role: [ProjectRole.PM],
     });
+    const user = await this.prisma.user.findFirst({
+      where:{
+        id: param.userId,
+      }
+    })
     const subproject = await this.prisma.subProject.create({
       data: {
         name: param.name,
@@ -205,19 +238,16 @@ export class SubprojectService {
         },
         endDate: param.endDate,
         startDate: param.startDate,
-        reports: {},
-        recentActivities: {
-          create: {
-            title: `Project [${param.name}] Created`,
-            description: `Project [${param.name}] has been created by [${param.userId}]`,
-          },
-        },
+        recentActivities: LogQuery.createProject({
+          userName: user.name
+        }),
       },
       include: {
         project: {
           select: {
             id: true,
             name: true,
+            owner:true,
             members: {
               select: {
                 userId: true,
@@ -227,7 +257,16 @@ export class SubprojectService {
         },
       },
     });
-    return subproject;
+
+    const projectLog = await this.prisma.projectLog.create(LogQuery.createSubprojectOnProjectLog({
+      subprojectName: subproject.name,
+      userName: subproject.project.owner.name,
+      projectId: subproject.projectId,
+    }))
+    this.output.projectLog(subproject.projectId, projectLog)
+    this.output.projectSubproject('add', subproject)
+    this.output.subprojectSidebar('add', subproject, subproject.project.members.map((e) => e.userId))
+    return;
   }
 
   async updateSubprojectHeader(param: {
@@ -237,11 +276,16 @@ export class SubprojectService {
     startDate: Date;
     endDate: Date;
   }) {
-    await this.projectQuery.checkIfSubprojectActive({
+    const oldSubproject = await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
       userId: param.userId,
       role: [ProjectRole.PM],
     });
+    const user = await this.prisma.user.findFirst({
+      where:{
+        id: param.userId,
+      }
+    })
     const subproject = await this.prisma.subProject.update({
       where: {
         id: param.subprojectId,
@@ -251,11 +295,7 @@ export class SubprojectService {
         startDate: param.startDate,
         endDate: param.endDate,
       },
-      select: {
-        name: true,
-        id: true,
-        startDate: true,
-        endDate: true,
+      include:{
         project: {
           select: {
             id: true,
@@ -270,14 +310,40 @@ export class SubprojectService {
             },
           },
         },
-      },
+      }
     });
-    await this.projectQuery.addSubProjectRecentActivities({
-      subprojectId: param.subprojectId,
-      title: `Subproject [${param.name}] Updated`,
-      description: `Subproject [${param.name}] has been updated by [${param.userId}]`,
-    });
-    return subproject;
+    let query:{
+      data: {
+          title: string;
+          description: string;
+          subproject: {
+              connect: {
+                  id: number;
+              };
+          };
+      };
+  }
+  ;
+    if (oldSubproject.name !== subproject.name) {
+      query = LogQuery.editNameSubProject({
+        newName: subproject.name,
+        oldName: oldSubproject.name,
+        subprojectId: subproject.id,
+        userName: user.name,
+      })
+    }else{
+      query = LogQuery.editSubprojectPeriod({
+        userName: user.name,
+        endDate: subproject.endDate,
+        startDate: subproject.startDate,
+        subprojectId: subproject.id
+      })
+    }
+    const log = await this.prisma.subProjectLog.create(query)
+    this.output.subprojectLog(subproject.id, log)
+    this.output.subprojectHeader(subproject)
+    this.output.subprojectSidebar('edit', subproject, subproject.project.members.map((e)=>e.userId))
+    return;
   }
 
   async promoteToConsultant(param: {
@@ -285,39 +351,28 @@ export class SubprojectService {
     userId: number;
     memberId: number;
   }) {
-    return this.editSubprojectMembers({
+    await this.editSubprojectMembers({
       subprojectId: param.subprojectId,
       userId: param.userId,
       memberId: param.memberId,
       add: true,
     });
+    return;
+    
   }
   async demoteToViewer(param: {
     subprojectId: number;
     userId: number;
     memberId: number;
   }) {
-    let result = await this.editSubprojectMembers({
+     await this.editSubprojectMembers({
       subprojectId: param.subprojectId,
       userId: param.userId,
       memberId: param.memberId,
       add: false,
     });
-    const findingIds = result.findings.map((finding) => {
-      return finding.id;
-    });
-    await this.prisma.testerFinding.updateMany({
-      where: {
-        findingId: {
-          in: findingIds,
-        },
-        userId: param.memberId,
-      },
-      data: {
-        active: false,
-      },
-    });
-    return result;
+    
+    return;
   }
 
   async deleteSubproject(param: { subprojectId: number; userId: number }) {
@@ -347,13 +402,15 @@ export class SubprojectService {
     acceptRole: ProjectRole;
     type: 'attachment' | 'report';
   }) {
-    await this.projectQuery.checkIfSubprojectActive({
+    const user = await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
       userId: param.userId,
       role: [param.acceptRole],
     });
+    
+    let file:File
     if (param.type === 'attachment') {
-      const attachment = await this.prisma.file.create({
+      file = await this.prisma.file.create({
         data: {
           name: param.file.filename,
           originalName: param.originalName,
@@ -366,9 +423,9 @@ export class SubprojectService {
           },
         },
       });
-      return attachment;
+     
     } else {
-      const attachment = await this.prisma.file.create({
+      file = await this.prisma.file.create({
         data: {
           name: param.file.filename,
           originalName: param.originalName,
@@ -381,8 +438,17 @@ export class SubprojectService {
           },
         },
       });
-      return attachment;
     }
+
+    const log = await this.prisma.subProjectLog.create(LogQuery.addFileSubProject({
+      type: param.type==="attachment"?"Attachment":"Report",
+      fileName: file.originalName??file.name,
+      subprojectId: param.subprojectId,
+      userName: user.project.owner.name
+    }))
+
+    this.output.subprojectFile(param.type, 'add', param.subprojectId, file)
+    this.output.subprojectLog(param.subprojectId, log)
   }
 
   async removeProjectFile(param: {
@@ -390,8 +456,9 @@ export class SubprojectService {
     fileId: number;
     userId: number;
     acceptRole: ProjectRole;
+    type: 'Attachment'|'Report'
   }) {
-    await this.projectQuery.checkIfSubprojectActive({
+    const user = await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
       userId: param.userId,
       role: [param.acceptRole],
@@ -410,8 +477,17 @@ export class SubprojectService {
         id: param.fileId,
       },
     });
+    const log = await this.prisma.subProjectLog.create(LogQuery.addFileSubProject({
+      type: param.type,
+      fileName: file.originalName??file.name,
+      subprojectId: param.subprojectId,
+      userName: user.project.owner.name
+    }))
 
+    this.output.subprojectFile(param.type, 'remove', param.subprojectId, file)
+    this.output.subprojectLog(param.subprojectId, log)
     unlinkFile(attachment.imagePath);
-    return attachment;
+
+    return;
   }
 }

@@ -44,17 +44,8 @@ export class ProjectController {
     @Req() req: Request,
   ) {
     const userId = extractUserId(req);
-    const projects = await this.projectService.create(createProjectDto, userId);
-    const data: EventSidebarProject = {
-      project: {
-        projectId: projects.id,
-        name: projects.name,
-      },
-      type: 'add',
-      userId: [userId, ...createProjectDto.members.map((m) => m.userId)],
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.SIDEBAR, data);
-    return data;
+    await this.projectService.create(createProjectDto, userId);
+    return "success";
   }
 
   @UseGuards(AccessTokenGuard)
@@ -138,37 +129,13 @@ export class ProjectController {
     @Body() body: AddMemberDto,
   ) {
     const userId = extractUserId(req);
-    const newMem = await this.projectService.addMember({
+    await this.projectService.addMember({
       adminId: userId,
       projectId: +id,
       userId: body.userId,
       role: body.role,
     });
-    const projectMember: EventMember = {
-      docId: +id,
-      type: 'add',
-      member: {
-        name: newMem.name,
-        id: newMem.id,
-        role: body.role,
-      },
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.MEMBER, projectMember);
-    const subprojectMember: EventSubprojectMember = {
-      subprojectId: newMem.subprojectIds,
-      type: 'add',
-      member: projectMember.member,
-    };
-    this.emitter.emit(SUBPROJECT_ON_MESSAGE.MEMBER, subprojectMember);
-    const data: EventSidebarProject = {
-      project: {
-        projectId: +id,
-        name: newMem.projectName,
-      },
-      type: 'add',
-      userId: [newMem.id],
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.SIDEBAR, data);
+    return "success"
   }
 
   @UseGuards(AccessTokenGuard)
@@ -179,30 +146,12 @@ export class ProjectController {
     @Body() body: RemoveMemberDto,
   ) {
     const userId = extractUserId(req);
-    const newMem = await this.projectService.removeMember({
+    return await this.projectService.removeMember({
       adminId: userId,
       projectId: +id,
       userId: body.userId,
     });
-    const val: EventMember = {
-      docId: +id,
-      type: 'remove',
-      member: {
-        name: newMem.name,
-        id: newMem.id,
-        role: ProjectRole.VIEWER,
-      },
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.MEMBER, val);
-    const data: EventSidebarProject = {
-      project: {
-        projectId: +id,
-        name: '',
-      },
-      type: 'remove',
-      userId: [newMem.id],
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.SIDEBAR, data);
+    
   }
 
   @UseGuards(AccessTokenGuard)
@@ -220,7 +169,7 @@ export class ProjectController {
     @Body() body: CreateProjectDto,
   ) {
     const userId = extractUserId(req);
-    const newData = await this.projectService.editHeader({
+    return this.projectService.editHeader({
       userId: userId,
       projectId: +id,
       endDate: body.endDate,
@@ -228,33 +177,7 @@ export class ProjectController {
       startDate: body.startDate,
     });
 
-    const newHeader: ProjectEventHeader = {
-      name: newData.name,
-      startDate: newData.startDate,
-      endDate: newData.endDate,
-      projectId: +id,
-      picture: newData.projectPicture
-        ? {
-            contentType: newData.projectPicture.contentType,
-            createdAt: newData.projectPicture.createdAt,
-            id: newData.projectPicture.id,
-            name: newData.projectPicture.name,
-            originalName: newData.projectPicture.originalName,
-          }
-        : undefined,
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.HEADER, newHeader);
-    const data: EventSidebarProject = {
-      project: {
-        projectId: +id,
-        name: newData.name,
-      },
-      type: 'edit',
-      userId: newData.members.map((m) => m.userId),
-    };
-
-    this.emitter.emit(PROJECT_ON_MESSAGE.SIDEBAR, data);
-    return newData;
+    
   }
 
   @UseGuards(AccessTokenGuard)
@@ -266,39 +189,25 @@ export class ProjectController {
     @Param('id') id: string,
   ) {
     const userId = extractUserId(req);
-    const newData = await this.projectService.editProfileProject({
+     await this.projectService.editProfileProject({
       userId,
       file,
       projectId: +id,
     });
-    const newHeader: ProjectEventHeader = {
-      name: newData.name,
-      startDate: newData.startDate,
-      endDate: newData.endDate,
-      projectId: +id,
-      picture: newData.projectPicture,
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.HEADER, newHeader);
-    return newHeader;
+    
+    
   }
 
   @UseGuards(AccessTokenGuard)
   @Delete(':id/picture')
   async deleteImage(@Req() req: any, @Param('id') id: string) {
     const userId = extractUserId(req);
-    const newData = await this.projectService.deleteProjectProfile({
+     await this.projectService.deleteProjectProfile({
       userId,
       projectId: +id,
     });
-    const newHeader: ProjectEventHeader = {
-      name: newData.name,
-      startDate: newData.startDate,
-      endDate: newData.endDate,
-      projectId: +id,
-      picture: newData.projectPicture,
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.HEADER, newHeader);
-    return newHeader;
+    
+
   }
 
   @UseGuards(AccessTokenGuard)
@@ -311,7 +220,7 @@ export class ProjectController {
   ) {
     const userId = extractUserId(req);
     const originalName = req.body.originalName;
-    const newFile = await this.projectService.uploadProjectFile({
+     await this.projectService.uploadProjectFile({
       userId,
       file,
       originalName,
@@ -319,18 +228,6 @@ export class ProjectController {
       projectId: +id,
       type: 'report',
     });
-    const val: EventFile = {
-      file: {
-        contentType: newFile.contentType,
-        createdAt: newFile.createdAt,
-        id: newFile.id,
-        name: newFile.name,
-        originalName: newFile.originalName,
-      },
-      projectId: +id,
-      type: 'add',
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.REPORT, val);
   }
 
   @UseGuards(AccessTokenGuard)
@@ -343,7 +240,7 @@ export class ProjectController {
   ) {
     const userId = extractUserId(req);
     const originalName = req.body.originalName;
-    const newFile = await this.projectService.uploadProjectFile({
+    await this.projectService.uploadProjectFile({
       userId,
       file,
       originalName,
@@ -351,18 +248,7 @@ export class ProjectController {
       projectId: +id,
       type: 'attachment',
     });
-    const val: EventFile = {
-      file: {
-        contentType: newFile.contentType,
-        createdAt: newFile.createdAt,
-        id: newFile.id,
-        name: newFile.name,
-        originalName: newFile.originalName,
-      },
-      projectId: +id,
-      type: 'add',
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.ATTACHMENT, val);
+    
   }
 
   @UseGuards(AccessTokenGuard)
@@ -376,6 +262,7 @@ export class ProjectController {
     const newFile = await this.projectService.removeProjectFile({
       userId,
       fileId: +fileId,
+      type:'Report',
       projectId: +id,
       acceptRole: [ProjectRole.TECHNICAL_WRITER],
     });
@@ -405,6 +292,7 @@ export class ProjectController {
       userId,
       fileId: +fileId,
       projectId: +id,
+      type:'Attachment',
       acceptRole: [ProjectRole.DEVELOPER],
     });
     const val: EventFile = {

@@ -14,6 +14,7 @@ import {
 } from 'src/subproject/entity/subproject.entity';
 import { EventFile } from 'src/types/file';
 import {
+  EventLogData,
   FindingEventHeader,
   ProjectEventHeader,
   SubprojectEventHeader,
@@ -128,10 +129,10 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @OnEvent(PROJECT_ON_MESSAGE.LOG)
   async handleProjectLog(payload: any) {
-    const value: ProjectEventHeader = payload;
+    const value: EventLogData = payload;
     this.server
-      .in(getProjectRoom(value.projectId))
-      .emit(PROJECT_EVENT.LOG, value);
+      .in(getProjectRoom(value.docId))
+      .emit(PROJECT_EVENT.LOG, value.data);
   }
 
   @OnEvent(PROJECT_ON_MESSAGE.SIDEBAR)

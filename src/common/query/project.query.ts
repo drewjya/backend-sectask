@@ -184,6 +184,7 @@ export class ProjectQuery {
 
         project: {
           include: {
+            owner: true,
             members: {
               include: {
                 member: true,

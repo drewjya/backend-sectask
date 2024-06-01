@@ -1,20 +1,28 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { ProjectRole } from '@prisma/client';
+import { File, ProjectLog, ProjectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
 import { noaccess, notfound } from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
 import { CreateProjectDto } from './request/project.request';
+import { LogQuery } from 'src/common/query/log.query';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { OutputService } from 'src/output/output.service';
 
 @Injectable()
 export class ProjectService {
   private projectQuery: ProjectQuery;
-  constructor(private prisma: PrismaService) {
+  constructor(private prisma: PrismaService, private output: OutputService) {
     this.projectQuery = new ProjectQuery(prisma);
   }
 
   async create(createProjectDto: CreateProjectDto, userId: number) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId
+      }
+    })
     let members: { role: ProjectRole; userId: number }[] = [
       { role: ProjectRole.PM, userId: userId },
     ];
@@ -35,16 +43,12 @@ export class ProjectService {
             id: userId,
           },
         },
-
-        reports: {},
-        recentActivities: {
-          create: {
-            title: `Project [${createProjectDto.name}] Created`,
-            description: `Project [${createProjectDto.name}] has been created by [${userId}]`,
-          },
-        },
+        recentActivities: LogQuery.createProject({
+          userName: user.name
+        }),
       },
     });
+    this.output.projectSidebar('add', project, members.map((e) => e.userId))
     return project;
   }
 
@@ -160,19 +164,32 @@ export class ProjectService {
       userId,
       role: [ProjectRole.PM],
     });
-    const project = await this.prisma.project.update({
-      where: {
-        id: projectId,
-      },
-      data: {
-        archived: true,
-      },
-    });
-    await this.projectQuery.addProjectRecentActivities({
-      projectId: project.id,
-      title: `Project ${project.name}`,
-      description: 'Project has been archived',
-    });
+    const log = await this.prisma.$transaction(async (tx) => {
+
+      const project = await tx.project.update({
+        where: {
+          id: projectId,
+        },
+        data: {
+          archived: true,
+        },
+        include: {
+          owner: {
+            select: {
+              name: true,
+            }
+          }
+        }
+      });
+      const log = await tx.projectLog.create(LogQuery.archived({
+        projectId: project.id,
+        projectName: project.name,
+        userName: project.owner.name
+      }))
+      return log
+
+    })
+    this.output.projectLog(projectId, log)
   }
 
   async searchMember(param: { email: string; projectId: number }) {
@@ -245,45 +262,46 @@ export class ProjectService {
         data: 'duplicate',
       });
     }
-
-    const project = await this.prisma.project.update({
-      where: {
-        id: param.projectId,
-      },
-      data: {
-        members: {
-          create: {
-            userId: param.userId,
-            role: param.role,
+    const { newMem, project, log } = await this.prisma.$transaction(async (tx) => {
+      const project = await tx.project.update({
+        where: {
+          id: param.projectId,
+        },
+        data: {
+          members: {
+            create: {
+              userId: param.userId,
+              role: param.role,
+            },
           },
         },
-      },
-      include: {
-        subProjects: {
-          select: {
-            name: true,
-            id: true,
-            recentActivities: true,
+        include: {
+          subProjects: {
+            select: {
+              name: true,
+              id: true,
+              recentActivities: true,
+            },
           },
         },
-      },
-    });
-    const newMem = await this.prisma.user.findFirst({
-      where: {
-        id: param.userId,
-      },
-    });
-    await this.projectQuery.addProjectRecentActivities({
-      projectId: project.id,
-      title: `Project ${project.name}`,
-      description: `${user.name} has been added`,
-    });
+      });
+      const newMem = await tx.user.findFirst({
+        where: {
+          id: param.userId,
+        },
+      });
+      const log = await tx.projectLog.create(LogQuery.addMemberProject({
+        memberName: user.name,
+        projectId: project.id
+      }))
 
-    return {
-      ...newMem,
-      projectName: project.name,
-      subprojectIds: project.subProjects.map((subproject) => subproject.id),
-    };
+      return { project, newMem, log };
+    })
+    this.output.projectLog(project.id, log)
+    this.output.projectSidebar('add', project, [newMem.id])
+    this.output.projectMember('add', project.id, param.role, newMem)
+    this.output.subprojectMember('add', project.subProjects.map((subproject) => subproject.id), param.role, newMem)
+
   }
 
   async removeMember(param: {
@@ -316,28 +334,21 @@ export class ProjectService {
     if (!findProjectMember) {
       throw notfound;
     }
-    const subprojects = findProjectMember.subprojectMember;
-
-    await this.prisma.projectMember.delete({
-      where: {
-        id: findProjectMember.id,
-      },
-    });
-
-    for (const iterator of subprojects) {
-      await this.projectQuery.addSubProjectRecentActivities({
-        subprojectId: iterator.subproject.id,
-        title: `Subproject ${iterator.subproject.name}`,
-        description: `${findProjectMember.member.name} has been removed`,
+    const log = await this.prisma.$transaction(async (tx) => {
+      await tx.projectMember.delete({
+        where: {
+          id: findProjectMember.id,
+        },
       });
-    }
-
-    await this.projectQuery.addProjectRecentActivities({
-      projectId: findProjectMember.project.id,
-      title: `Project ${findProjectMember.project.name}`,
-      description: `${findProjectMember.member.name} has been removed`,
-    });
-
+      const removeProject = LogQuery.removeMemberProject({
+        memberName: findProjectMember.member.name,
+        projectId: param.projectId,
+      })
+      return await tx.projectLog.create(removeProject)
+    })
+    this.output.projectLog(param.projectId, log)
+    this.output.projectMember('remove', param.projectId, ProjectRole.VIEWER, findProjectMember.member)
+    this.output.projectSidebar('remove', findProjectMember.project, [findProjectMember.member.id])
     return findProjectMember.member;
   }
 
@@ -348,35 +359,57 @@ export class ProjectService {
     startDate: Date;
     endDate: Date;
   }) {
-    await this.projectQuery.checkIfProjectActive({
+    const oldData = await this.projectQuery.checkIfProjectActive({
       projectId: param.projectId,
       userId: param.userId,
       role: [ProjectRole.PM],
     });
-    return this.prisma.project.update({
-      where: {
-        id: param.projectId,
-      },
-      data: {
-        name: param.name,
-        startDate: param.startDate,
-        endDate: param.endDate,
-      },
-      include: {
-        projectPicture: true,
-        members: {
-          select: {
-            userId: true,
+
+    const { newData, log } = await this.prisma.$transaction(async (tx) => {
+      const newData = await tx.project.update({
+        where: {
+          id: param.projectId,
+        },
+        data: {
+          name: param.name,
+          startDate: param.startDate,
+          endDate: param.endDate,
+        },
+        include: {
+          owner: true,
+          projectPicture: true,
+          members: {
+            select: {
+              userId: true,
+            },
           },
         },
-      },
-    });
+      });
+      const paramData = oldData.name !== newData.name ? LogQuery.editNameProject({
+        newName: newData.name,
+        oldName: oldData.name,
+        projectId: newData.id,
+        userName: newData.owner.name
+      }) : LogQuery.editPeriod({
+        startDate: param.startDate,
+        endDate: param.endDate,
+        projectId: newData.id,
+        userName: newData.owner.name
+      });
+      const log = await tx.projectLog.create(paramData)
+      return {
+        log, newData
+      }
+    })
+    this.output.projectLog(param.projectId, log)
+    this.output.projectSidebar('edit', newData, newData.members.map((e) => e.userId))
+    this.output.projectHeader(newData)
+
   }
 
   async editProfileProject(param: {
     projectId: number;
     file: Express.Multer.File;
-
     userId: number;
   }) {
     await this.projectQuery.checkIfProjectActive({
@@ -384,40 +417,59 @@ export class ProjectService {
       userId: param.userId,
       role: [ProjectRole.PM],
     });
-    await this.prisma.file.create({
-      data: {
-        name: param.file.filename,
 
-        contentType: param.file.mimetype,
-        imagePath: param.file.path,
-        project: {
-          connect: {
-            id: param.projectId,
+    const { log, data } = await this.prisma.$transaction(async (tx) => {
+      const oldProject = await tx.project.findFirst({
+        include: {
+          projectPicture: true,
+          owner: true,
+        },
+        where: {
+          id: param.projectId
+        }
+      })
+      if (oldProject.projectPicture) {
+        await tx.file.delete({
+          where: {
+            id: oldProject.projectPicture.id,
+          }
+        })
+      }
+      await tx.file.create({
+        data: {
+          name: param.file.filename,
+          contentType: param.file.mimetype,
+          imagePath: param.file.path,
+          project: {
+            connect: {
+              id: param.projectId,
+
+            },
           },
         },
-      },
-    });
+      });
+      const log = await tx.projectLog.create(LogQuery.addFileProject({
+        type: 'File',
+        fileName: param.file.filename,
+        projectId: param.projectId,
+        userName: oldProject.owner.name
+      }))
+      return { data: oldProject, log }
+    })
+    if (data.projectPicture) {
+      unlinkFile(data.projectPicture.imagePath);
+    }
 
-    return this.prisma.project.findFirst({
+    const project = await this.prisma.project.findFirst({
       where: {
         id: param.projectId,
       },
-      select: {
-        name: true,
-        startDate: true,
-        endDate: true,
-        id: true,
-        projectPicture: {
-          select: {
-            contentType: true,
-            createdAt: true,
-            id: true,
-            name: true,
-            originalName: true,
-          },
-        },
-      },
+      include: {
+        projectPicture: true,
+      }
     });
+    this.output.projectLog(param.projectId, log)
+    this.output.projectHeader(project)
   }
 
   async deleteProjectProfile(param: {
@@ -434,34 +486,39 @@ export class ProjectService {
     if (!find.projectPictureId) {
       throw notfound;
     }
-
-    const file = await this.prisma.file.delete({
-      where: {
-        id: find.projectPictureId,
-      },
-    });
+    const { file, log } = await this.prisma.$transaction(async (tx) => {
+      const project = await tx.user.findFirst({
+        where: {
+          id: param.userId
+        }
+      })
+      const file = await tx.file.delete({
+        where: {
+          id: find.projectPictureId,
+        },
+      });
+      const log = await tx.projectLog.create(LogQuery.removeFileProject({
+        type: 'File',
+        fileName: file.name,
+        projectId: param.projectId,
+        userName: project.name
+      }))
+      return {
+        file, log
+      };
+    })
 
     unlinkFile(file.imagePath);
-    return this.prisma.project.findFirst({
+    const project = await this.prisma.project.findFirst({
       where: {
         id: param.projectId,
       },
-      select: {
-        name: true,
-        startDate: true,
-        endDate: true,
-        id: true,
-        projectPicture: {
-          select: {
-            contentType: true,
-            createdAt: true,
-            id: true,
-            name: true,
-            originalName: true,
-          },
-        },
-      },
+      include: {
+        projectPicture: true
+      }
     });
+    this.output.projectLog(param.projectId, log)
+    this.output.projectHeader(project)
   }
 
   async uploadProjectFile(param: {
@@ -477,37 +534,61 @@ export class ProjectService {
       userId: param.userId,
       role: param.acceptRole,
     });
-    if (param.type === 'attachment') {
-      const attachment = await this.prisma.file.create({
+    const { attachment, log } = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findFirst({
+        where: {
+          id: param.userId
+        }
+      })
+      let query: {
+        data: {
+          name: string,
+          originalName: string,
+          contentType: string,
+          imagePath: string,
+          projectReports?: any,
+          projectAttachments?: any
+        }
+      } = {
         data: {
           name: param.file.filename,
           originalName: param.originalName,
           contentType: param.file.mimetype,
           imagePath: param.file.path,
+        },
+      };
+      if (param.type === "attachment") {
+        query.data = {
+          ...query.data,
           projectAttachments: {
             connect: {
               id: param.projectId,
             },
-          },
-        },
-      });
-      return attachment;
-    } else {
-      const attachment = await this.prisma.file.create({
-        data: {
-          name: param.file.filename,
-          originalName: param.originalName,
-          contentType: param.file.mimetype,
-          imagePath: param.file.path,
+          }
+        }
+      } else {
+        query.data = {
+          ...query.data,
           projectReports: {
             connect: {
-              id: param.projectId,
-            },
-          },
-        },
-      });
-      return attachment;
-    }
+              id: param.projectId
+            }
+          }
+        }
+      }
+      const attachment = await tx.file.create(query);
+      const log = await tx.projectLog.create(LogQuery.addFileProject({
+        fileName: attachment.originalName ?? attachment.name,
+        projectId: param.projectId,
+        type: param.type ==='attachment'? 'Attachment':'Report',
+        userName: user.name
+      }))
+      return { attachment, log }
+    })
+
+    this.output.projectLog(param.projectId, log)
+    this.output.projectFile(param.type, 'add', param.projectId, attachment)
+
   }
 
   async removeProjectFile(param: {
@@ -515,6 +596,7 @@ export class ProjectService {
     fileId: number;
     userId: number;
     acceptRole: ProjectRole[];
+    type: 'Attachment' | 'Report'
   }) {
     await this.projectQuery.checkIfProjectActive({
       projectId: param.projectId,
@@ -530,12 +612,29 @@ export class ProjectService {
     if (!file) {
       throw notfound;
     }
-    const attachment = await this.prisma.file.delete({
-      where: {
-        id: param.fileId,
-      },
-    });
-
+    const { attachment, log } = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findFirst({
+        where: {
+          id: param.userId,
+        }
+      })
+      const attachment = await tx.file.delete({
+        where: {
+          id: param.fileId,
+        },
+      });
+      const log = await tx.projectLog.create(LogQuery.removeFileProject(
+        {
+          type: param.type,
+          fileName: attachment.originalName ?? attachment.name,
+          projectId: param.projectId,
+          userName: user.name,
+        }
+      ))
+      return { attachment, log }
+    })
+    this.output.projectLog(param.projectId, log)
+    this.output.projectFile(param.type, 'remove', param.projectId, attachment)
     unlinkFile(attachment.imagePath);
     return attachment;
   }

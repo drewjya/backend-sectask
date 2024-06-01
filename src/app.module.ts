@@ -11,6 +11,7 @@ import { ProjectModule } from './project/project.module';
 import { SubprojectModule } from './subproject/subproject.module';
 import { UserModule } from './user/user.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { OutputModule } from './output/output.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     EventModule,
     AuthModule,
     FileModule,
+    OutputModule,
   ],
 })
 export class AppModule {}

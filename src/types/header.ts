@@ -21,3 +21,15 @@ export type FindingEventHeader = {
 };
 
 
+export type EventLogData = {
+  docId: number,
+  data: LogData,
+
+}
+
+export type LogData = {
+  title: string,
+  description: string,
+  createdAt: Date
+}
+
