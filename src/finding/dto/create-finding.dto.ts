@@ -1,12 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-import { Transform } from 'class-transformer';
 import {
-  IsDate,
   IsNotEmpty,
   IsOptional,
-  IsString,
-  MaxDate
+  IsString
 } from 'class-validator';
 
 
@@ -58,21 +55,23 @@ export class EditFProp {
   likelihood?: string;
 }
 
-export class EditResetsProp {
-  @IsOptional()
-  @ApiProperty()
-  @Transform(({ value }) => (value ? new Date(value) : null))
-  @IsDate()
-  @MaxDate(new Date())
-  latestUpdate?: Date;
+export class CreateTestingDto {
 
-  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  status?: string;
+  status: string;
 
-  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
   @ApiProperty()
-  releases?: string;
+  version: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @ApiProperty()
+  content: string;
+
 }
 
 export class EditCVSSProp {

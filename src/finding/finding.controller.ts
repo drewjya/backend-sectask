@@ -21,10 +21,11 @@ import { FINDING_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
 import { extractUserId } from 'src/utils/extract/userId';
 import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
 import {
+  CreateTestingDto,
   EditCVSSProp,
   EditFProp,
   EditFindingDto,
-  EditResetsProp,
+
   NewChatDto,
   NewChatRoomDto,
 } from './dto/create-finding.dto';
@@ -147,20 +148,53 @@ export class FindingController {
       properties: param,
     });
   }
+
   @UseGuards(AccessTokenGuard)
-  @Post('retest/:id')
-  editResetsProp(
+  @Get('retest/:id')
+  getTestHistory(
     @Param('id') id: string,
     @Req() req: Request,
-    @Body() param: EditResetsProp,
+
   ) {
     const userId = extractUserId(req);
-    return this.findingService.editRetestProperties({
-      findingId: +id,
+    return this.findingService.getRetestList({
       userId: userId,
-      properties: param,
-    });
+      findingId: +id,
+    })
   }
+
+  @UseGuards(AccessTokenGuard)
+  @Post('retest/:id')
+  createTest(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() param: CreateTestingDto,
+  ) {
+    const userId = extractUserId(req);
+    return this.findingService.createRetest({
+      userId: userId,
+      content: param.content,
+      findingId: +id,
+      status: param.status,
+      version: param.version
+    })
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get('retest/:id/:testId')
+  getRetestDetail(
+    @Param('id') id: string,
+    @Param('testId') testId: string,
+    @Req() req: Request,
+  ) {
+    const userId = extractUserId(req);
+    return this.findingService.getRetestDetail({
+      userId: userId,
+      findingId: +id,
+      retestId: +testId
+    })
+  }
+
   @UseGuards(AccessTokenGuard)
   @Post('cvss/:id')
   async editCVSS(

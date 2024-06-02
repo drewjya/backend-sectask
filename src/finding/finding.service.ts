@@ -479,6 +479,15 @@ export class FindingService {
     })
 
     if (finding.retestHistories) {
+
+      finding.retestHistories.forEach((e) => {
+        delete e.tester.password
+        delete e.tester.email
+        delete e.tester.createdAt
+        delete e.tester.deletedAt
+        delete e.tester.updatedAt
+
+      })
       return finding.retestHistories
     }
     return []
@@ -533,7 +542,7 @@ export class FindingService {
     if (!finding) {
       throw noaccess;
     }
-    console.log(finding);
+
     await this.authorizedEditor({
       subprojectId: finding.subProjectId,
       userId: param.userId,
@@ -857,6 +866,9 @@ export class FindingService {
     if (param.retest === true) {
       query = {
         retestHistories: {
+          orderBy: {
+            createdAt: 'desc'
+          },
           select: {
             createdAt: true,
             status: true,

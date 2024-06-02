@@ -30,23 +30,23 @@ export type SubprojectFindingDto = {
 };
 
 
-export interface UserWithFile extends User{
+export interface UserWithFile extends User {
   profilePicture?: File
 }
 export interface ProjectWithMember extends Project {
   members: ProjectMember[]
 }
-export interface SubprojectWithProject extends SubProject{
+export interface SubprojectWithProject extends SubProject {
   project: ProjectWithMember
 }
 export interface FindingWithSubprojectRetest extends Finding {
   subProject: SubprojectWithProject;
-  
-  retestHistories?:{
+
+  retestHistories?: {
     createdAt: Date;
     id: number
     version: string
     status?: string
     tester: UserWithFile
-  }
+  }[]
 }
