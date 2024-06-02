@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 import { SocketAuthMiddleware } from 'src/middleware/socket-auth.middleware';
+import { ChatItem, ChatRoomWithOwner } from 'src/output/output.service';
 import {
   ProjectSubprojectEvent,
   SubprojectFindingDto,
@@ -35,9 +36,13 @@ import {
   PROJECT_EVENT,
   PROJECT_MESSAGE,
   PROJECT_ON_MESSAGE,
+  ROOM_ACTION,
+  ROOM_EVENT,
+  ROOM_ON_MESSAGE,
   SUBPROJECT_EVENT,
   SUBPROJECT_MESSAGE,
   SUBPROJECT_ON_MESSAGE,
+  getChatRoom,
   getFindingRoom,
   getProjectRoom,
   getSubProjectRoom,
@@ -45,11 +50,10 @@ import {
 } from 'src/utils/event';
 import { EventService } from './event.service';
 import { ASocket } from './interface/a-socket.interface';
-import { Finding } from 'src/finding/entities/finding.entity';
 
 @WebSocketGateway({ namespace: 'event' })
 export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  constructor(private readonly eventService: EventService) {}
+  constructor(private readonly eventService: EventService) { }
   private readonly sessions: Map<number, ASocket> = new Map();
   @WebSocketServer()
   server: Server;
@@ -280,7 +284,7 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @OnEvent(SUBPROJECT_ON_MESSAGE.LOG)
   async onSubprojectLog(payload: any) {
-    const value: EventLogData = payload;    
+    const value: EventLogData = payload;
     this.server
       .in(getSubProjectRoom(value.docId))
       .emit(SUBPROJECT_EVENT.LOG, value.data);
@@ -296,8 +300,35 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent(FINDING_ON_MESSAGE.CVSS)
   onFindingCVSS(payload: {
     findingId: number,
-    cvss:any
-  }) { 
+    cvss: any
+  }) {
     this.server.in(getFindingRoom(payload.findingId)).emit(FINDING_EVENT.CVSS, payload)
+  }
+
+  @OnEvent(FINDING_ON_MESSAGE.ROOM)
+  onFindingDiscussion(payload: ChatRoomWithOwner) {
+    this.server.in(getFindingRoom(payload.findingId)).emit(FINDING_EVENT.ROOM, payload)
+  }
+
+
+  @SubscribeMessage(ROOM_ACTION.JOIN)
+  onJoinRoomChat(client: ASocket, data: any) {
+    let val = JSON.parse(data);
+
+    client.join(getChatRoom(val.roomId));
+  }
+
+  @SubscribeMessage(ROOM_ACTION.LEAVE)
+  onLeaveRoomChat(client: ASocket, data: any) {
+    let val = JSON.parse(data);
+    client.leave(getChatRoom(val.roomId));
+  }
+
+  @OnEvent(ROOM_ON_MESSAGE.SEND)
+  onSendChat(payload: {
+    roomId: number;
+    chat: ChatItem;
+  }) {
+    this.server.in(getChatRoom(payload.roomId)).emit(ROOM_EVENT.SEND, payload.chat)
   }
 }

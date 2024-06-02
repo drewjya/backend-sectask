@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { OutputModule } from 'src/output/output.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { FindingController } from './finding.controller';
 import { FindingService } from './finding.service';
@@ -6,6 +7,6 @@ import { FindingService } from './finding.service';
 @Module({
   controllers: [FindingController],
   providers: [FindingService],
-  imports: [PrismaModule],
+  imports: [PrismaModule, OutputModule],
 })
-export class FindingModule {}
+export class FindingModule { }

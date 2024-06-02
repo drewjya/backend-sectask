@@ -1,16 +1,38 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma, Project, ProjectLog, ProjectRole, User, File, SubProject, SubProjectLog } from '@prisma/client';
+import { Chat, ChatRoom, File, Project, ProjectLog, ProjectRole, SubProject, SubProjectLog, User } from '@prisma/client';
 import { ProjectSubprojectEvent } from 'src/subproject/entity/subproject.entity';
 import { EventFile } from 'src/types/file';
 import { EventLogData, ProjectEventHeader, SubprojectEventHeader } from 'src/types/header';
 import { EventMember, EventSubprojectMember } from 'src/types/member';
 import { EventSidebarProject, EventSidebarSubproject } from 'src/types/sidebar';
-import { PROJECT_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
+import { FINDING_ON_MESSAGE, PROJECT_ON_MESSAGE, ROOM_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
 
 export interface ProjectWithPicture extends Project {
     projectPicture?: File
 }
+
+export interface ChatRoomWithOwner extends ChatRoom {
+    createdBy: {
+        id: number;
+        name: string;
+        profilePicture?: File;
+    };
+}
+
+
+
+export interface ChatItem {
+    content: string;
+    id: number
+    createdAt: Date;
+    sender: {
+        id: number;
+        name: string;
+        profilePicture?: File
+    };
+    replyChat?: ChatItem;
+  }
 
 @Injectable()
 export class OutputService {
@@ -94,11 +116,11 @@ export class OutputService {
         }
     }
 
-    projectSubproject(type:'add'|'edit',subproject:SubProject) { 
-        const newEntity:ProjectSubprojectEvent = {
-            type:type,
+    projectSubproject(type: 'add' | 'edit', subproject: SubProject) {
+        const newEntity: ProjectSubprojectEvent = {
+            type: type,
             projectId: subproject.projectId,
-            subproject:{
+            subproject: {
                 name: subproject.name,
                 endDate: subproject.endDate,
                 startDate: subproject.startDate,
@@ -108,30 +130,30 @@ export class OutputService {
         this.emitter.emit(PROJECT_ON_MESSAGE.SUBPROJECT, newEntity);
     }
 
-    subprojectSidebar(type:'add'|'edit'|'remove', subproject:SubProject, userId: number[]) {
+    subprojectSidebar(type: 'add' | 'edit' | 'remove', subproject: SubProject, userId: number[]) {
         const newVal: EventSidebarSubproject = {
             userId: userId,
             projectId: subproject.projectId,
             subproject: {
-              subprojectId: subproject.id,
-              name: subproject.name,
+                subprojectId: subproject.id,
+                name: subproject.name,
             },
             type: type,
-          };
-          this.emitter.emit(SUBPROJECT_ON_MESSAGE.SIDEBAR, newVal);
-     }
+        };
+        this.emitter.emit(SUBPROJECT_ON_MESSAGE.SIDEBAR, newVal);
+    }
 
-    subprojectHeader(subproject:SubProject){
+    subprojectHeader(subproject: SubProject) {
         const newHeader: SubprojectEventHeader = {
             name: subproject.name,
             startDate: subproject.startDate,
             endDate: subproject.endDate,
             subprojectId: subproject.id,
-          };
-          this.emitter.emit(SUBPROJECT_ON_MESSAGE.HEADER, newHeader);
+        };
+        this.emitter.emit(SUBPROJECT_ON_MESSAGE.HEADER, newHeader);
     }
 
-    subprojectMember(type: 'add' | 'remove' | 'promote'| 'demote', subprojectId: number[], role: ProjectRole, user: User) {
+    subprojectMember(type: 'add' | 'remove' | 'promote' | 'demote', subprojectId: number[], role: ProjectRole, user: User) {
         const subprojectMember: EventSubprojectMember = {
             subprojectId: subprojectId,
             type: type,
@@ -172,22 +194,33 @@ export class OutputService {
                 createdAt: data.createdAt
             }
         };
-        
+
         this.emitter.emit(SUBPROJECT_ON_MESSAGE.LOG, val);
     }
 
-    subprojectFinding(){}
+    subprojectFinding() { }
 
-    findingSidebar(){}
+    findingSidebar() { }
 
-    findingHeader(){}
+    findingHeader() { }
 
-    findingCvss(){}
+    findingCvss() { }
 
-    findingFProp(){}
+    findingFProp() { }
 
-    findingCVSS(){}
+    findingCVSS() { }
 
-    
+
+    roomChat(room: ChatRoomWithOwner) {
+        this.emitter.emit(FINDING_ON_MESSAGE.ROOM, room)
+    }
+
+    sendChat(roomId: number, chat:ChatItem){
+        const val = {
+            roomId: roomId,
+            chat: chat
+        }
+        this.emitter.emit(ROOM_ON_MESSAGE.SEND, val)
+    }
 
 }

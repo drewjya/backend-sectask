@@ -1,3 +1,4 @@
+import { Finding, Project, ProjectMember, SubProject, User } from '@prisma/client';
 import { VFile } from 'src/types/file';
 
 export type ProjectSubprojectEvent = {
@@ -27,3 +28,25 @@ export type SubprojectFindingDto = {
   };
   type: string;
 };
+
+
+export interface UserWithFile extends User{
+  profilePicture?: File
+}
+export interface ProjectWithMember extends Project {
+  members: ProjectMember[]
+}
+export interface SubprojectWithProject extends SubProject{
+  project: ProjectWithMember
+}
+export interface FindingWithSubprojectRetest extends Finding {
+  subProject: SubprojectWithProject;
+  
+  retestHistories?:{
+    createdAt: Date;
+    id: number
+    version: string
+    status?: string
+    tester: UserWithFile
+  }
+}

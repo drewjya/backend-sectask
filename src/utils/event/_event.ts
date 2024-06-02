@@ -58,6 +58,7 @@ export const FINDING_EVENT = {
   FINDINGPROP: 'findingProperty',
   RETEST: 'findingRetest',
   CVSS: 'findingCVSS',
+  ROOM: 'findingRoomChat',
 };
 
 export const FINDING_MESSAGE = {
@@ -73,7 +74,24 @@ export const FINDING_ON_MESSAGE = {
   FINDINGPROP: 'finding.property',
   RETEST: 'finding.retest',
   CVSS: 'finding.cvss',
+  ROOM: 'finding.room'
 };
+
+export const ROOM_ACTION = {
+  JOIN:'onRoomJoin',
+  LEAVE:'onRoomLeave',
+}
+
+export const ROOM_EVENT = {
+  SEND:'roomReceiveMessage'
+  
+}
+
+export const ROOM_ON_MESSAGE={
+  SEND:'room.send'
+}
+
+export const getChatRoom = (roomChatId: number)=>`roomChat:${roomChatId}`
 
 export const getProjectRoom = (projectId: number) => `project:${projectId}`;
 export const getSubProjectRoom = (subprojectId: number) =>

@@ -30,6 +30,7 @@ model User {
   TesterFinding    TesterFinding[]
   Project          Project[]
   ChatRoom         ChatRoom[]
+  RetestHistory    RetestHistory[]
 }
 
 model File {
@@ -164,11 +165,26 @@ model Finding {
   subProjectId Int
   userId       Int
 
-  chatRoom      ChatRoom[]
-  document      DocumentWrapper[]
-  testerFinding TesterFinding[]
+  description   Document @relation("FindingDescription", fields: [descriptionId], references: [id])
+  threatAndRisk Document @relation("FindindThreat", fields: [threatAndRiskId], references: [id])
 
-  @@map("findings")
+  retestHistories RetestHistory[]
+  chatRoom        ChatRoom[]
+  testerFinding   TesterFinding[]
+  threatAndRiskId String
+  descriptionId   String
+}
+
+model RetestHistory {
+  id        Int      @id @default(autoincrement())
+  status    String
+  version   String
+  tester    User     @relation(fields: [testerId], references: [id])
+  testerId  Int
+  content   String
+  createdAt DateTime @default(now())
+  finding   Finding? @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  findingId Int?
 }
 
 model TesterFinding {
@@ -180,29 +196,13 @@ model TesterFinding {
   active    Boolean @default(true)
 
   @@unique([userId, findingId])
-  @@map("tester_findings")
-}
-
-model DocumentWrapper {
-  id         Int      @id @default(autoincrement())
-  finding    Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
-  findingId  Int
-  document   Document @relation(fields: [documentId], references: [id])
-  documentId String   @unique
-
-  type DocType
-}
-
-enum DocType {
-  DESCRIPTION
-  THREAT
 }
 
 model Document {
-  id   String @id
-  data Bytes
-
-  wrapper DocumentWrapper?
+  id           String    @id
+  data         Bytes
+  descriptions Finding[] @relation("FindingDescription")
+  threats      Finding[] @relation("FindindThreat")
 }
 
 model CvssDetail {

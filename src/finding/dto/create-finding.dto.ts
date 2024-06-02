@@ -4,10 +4,9 @@ import { Transform } from 'class-transformer';
 import {
   IsDate,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
-  MaxDate,
+  MaxDate
 } from 'class-validator';
 
 
@@ -235,4 +234,42 @@ export class EditCVSSProp {
   @IsNotEmpty()
   @ApiProperty()
   E: string;
+}
+
+
+export type CvssParam = {
+
+  AV: string;
+  AC: string;
+  AT: string;
+  PR: string;
+  UI: string;
+  VC: string;
+  VI: string;
+  VA: string;
+  SC: string;
+  SI: string;
+  SA: string;
+  S: string;
+  AU: string;
+  R: string;
+  V: string;
+  RE: string;
+  U: string;
+  MAV: string;
+  MAC: string;
+  MAT: string;
+  MPR: string;
+  MUI: string;
+  MVC: string;
+  MVI: string;
+  MVA: string;
+  MSC: string;
+  MSI: string;
+  MSA: string;
+  CR: string;
+  IR: string;
+  AR: string;
+  E: string;
+
 }

@@ -1,17 +1,50 @@
 import { Injectable } from '@nestjs/common';
-import { DocType, ProjectRole } from '@prisma/client';
+import { ProjectRole, User } from '@prisma/client';
+import { LogQuery } from 'src/common/query/log.query';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { uuid } from 'src/common/uuid';
+import { OutputService } from 'src/output/output.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { FindingWithSubprojectRetest } from 'src/subproject/entity/subproject.entity';
 import { noaccess, notfound, unauthorized } from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
+import { CvssParam } from './dto/create-finding.dto';
 import { basicCvss } from './finding.enum';
 
 @Injectable()
 export class FindingService {
   private projectQuery: ProjectQuery;
-  constructor(private prisma: PrismaService) {
+  constructor(private prisma: PrismaService, private output: OutputService) {
     this.projectQuery = new ProjectQuery(prisma);
+  }
+  private async authorizedEditor(param: {
+    userId: number;
+    subprojectId: number;
+
+  }) {
+
+    const subpro = await this.prisma.subProject.findFirst({
+      where: {
+        id: param.subprojectId
+      },
+      select: {
+        members: {
+          select: {
+            user: true
+          }
+        }
+      }
+    })
+    if (!subpro) {
+      throw notfound
+    }
+    const member = subpro.members.find((e) => e.user.id === param.userId)
+    if (!member) {
+      throw noaccess;
+    }
+
+    return;
+
   }
 
   async create(param: { subprojectId: number; userId: number }) {
@@ -48,6 +81,18 @@ export class FindingService {
               data: basicCvss(),
             },
           },
+          description: {
+            create: {
+              data: Buffer.from(''),
+              id: uuid(),
+            }
+          },
+          threatAndRisk: {
+            create: {
+              data: Buffer.from(''),
+              id: uuid(),
+            }
+          },
           testerFinding: {
             create: {
               user: {
@@ -59,58 +104,16 @@ export class FindingService {
           },
         },
       });
-      const wrapper1 = await this.prisma.documentWrapper.create({
-        data:
-        {
-          type: "DESCRIPTION",
-          document: {
-            create: {
-              data: Buffer.from(''),
-              id: uuid(),
-            }
-          },
 
-          finding: {
-            connect: {
-              id: newFinding.id,
-            }
-          }
-        }
-      })
-      const wrapper2 = await this.prisma.documentWrapper.create({
-        data:
-        {
-          type: "THREAT",
-          finding: {
-            connect: {
-              id: newFinding.id,
-            }
-          },
-          document: {
-            create: {
-              data: Buffer.from(''),
-              id: uuid(),
-            }
-          }
-        }
-      })
 
       return await this.prisma.finding.findFirst({
         where: {
           id: newFinding.id,
         },
         include: {
-          document: {
-            select: {
-              document: {
-                select: {
-                  id: true,
-                },
-              },
-              type: true,
-              findingId: true,
-            }
-          },
+          description: true,
+          threatAndRisk: true,
+
           cvssDetail: {
             select: {
               data: true,
@@ -152,9 +155,8 @@ export class FindingService {
       })
     })
 
-    const description = newFind.document.find((e) => e.type === DocType.DESCRIPTION)
-    const threat = newFind.document.find((e) => e.type === DocType.THREAT)
-    delete newFind.document
+    const description = newFind.description
+    const threat = newFind.threatAndRisk
     return {
       ...newFind,
       description,
@@ -225,16 +227,8 @@ export class FindingService {
       include: {
         cvssDetail: true,
 
-        document: {
-          select: {
-            document: {
-              select: {
-                id: true,
-              },
-            },
-            type: true,
-          }
-        },
+        description: true,
+        threatAndRisk: true,
         createdBy: {
           select: {
             profilePicture: true,
@@ -286,16 +280,12 @@ export class FindingService {
     );
 
     delete finding.subProject.members;
-    const description = finding.document.find((e) => e.type === DocType.DESCRIPTION)
-    const threat = finding.document.find((e) => e.type === DocType.THREAT)
-    delete finding.document
+
 
 
     return {
       ...finding,
       isEditor: isEditor ? true : false,
-      descriptionId: description.document.id,
-      threatAndRiskId: threat.document.id
     };
   }
 
@@ -435,41 +425,100 @@ export class FindingService {
     return newFInding;
   }
 
+  async createRetest(param: {
+    userId: number;
+    status: string;
+    version: string;
+    content: string;
+    findingId: number;
+  }) {
+    const finding = await this.prisma.finding.findFirst({
+      where: {
+        id: param.findingId
+      }
+    })
+    if (!finding) {
+      throw notfound
+    }
+    await this.authorizedEditor({
+      subprojectId: finding.subProjectId,
+      userId: param.userId,
+    })
+
+    const retest = await this.prisma.retestHistory.create({
+      data: {
+        tester: {
+          connect: {
+            id: param.userId,
+          }
+        },
+        finding: {
+          connect: {
+            id: finding.id,
+          },
+        }, content: param.content,
+        status: param.status,
+        version: param.version,
+
+      }
+    })
+
+    //TODO: ADD LOG
+    //TODO: ADD EVENT
+  }
+
+
+  async getRetestList(param: {
+    findingId: number
+    userId: number
+  }) {
+    const { finding, user } = await this.checkMemberFinding({
+      findingId: param.findingId,
+      userId: param.userId,
+      retest: true
+    })
+
+    if (finding.retestHistories) {
+      return finding.retestHistories
+    }
+    return []
+  }
+
+
+  async getRetestDetail(param: {
+    retestId: number;
+    userId: number;
+    findingId: number
+  }) {
+    await this.checkMemberFinding({
+      findingId: param.findingId,
+      userId: param.userId,
+    })
+    const retest = await this.prisma.retestHistory.findFirst({
+      where: {
+        id: param.retestId,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        status: true,
+        tester: {
+          include: {
+            profilePicture: true,
+          }
+        },
+        content: true,
+        version: true,
+      }
+    })
+    delete retest.tester.password
+    delete retest.tester.createdAt
+    delete retest.tester.deletedAt
+    return retest;
+  }
+
   async editCVSS(param: {
-    cvss: {
-      AV: string;
-      AC: string;
-      AT: string;
-      PR: string;
-      UI: string;
-      VC: string;
-      VI: string;
-      VA: string;
-      SC: string;
-      SI: string;
-      SA: string;
-      S: string;
-      AU: string;
-      R: string;
-      V: string;
-      RE: string;
-      U: string;
-      MAV: string;
-      MAC: string;
-      MAT: string;
-      MPR: string;
-      MUI: string;
-      MVC: string;
-      MVI: string;
-      MVA: string;
-      MSC: string;
-      MSI: string;
-      MSA: string;
-      CR: string;
-      IR: string;
-      AR: string;
-      E: string;
-    };
+    cvss: CvssParam;
     userId: number;
     findingId: number;
   }) {
@@ -515,68 +564,6 @@ export class FindingService {
         id: param.findingId,
       },
     });
-  }
-
-  private async authorizedEditor(param: {
-    userId: number;
-    subprojectId: number;
-    includePm?: boolean;
-  }) {
-    if (param.includePm === true) {
-      const subproject = await this.prisma.subProject.findFirst({
-        where: {
-          id: param.subprojectId,
-        },
-        include: {
-          project: {
-            select: {
-              members: {
-                select: {
-                  userId: true,
-                  role: true,
-                },
-              },
-            },
-          },
-        },
-      });
-      if (!subproject) {
-        throw noaccess;
-      }
-      const member = subproject.project.members.find(
-        (member) => member.userId === param.userId,
-      );
-      if (!member) {
-        throw noaccess;
-      }
-      if (member.role === ProjectRole.PM) {
-        return;
-      } else {
-        throw noaccess;
-      }
-    } else {
-      const subpro = await this.prisma.subProject.findFirst({
-        where: {
-          id: param.subprojectId
-        },
-        select: {
-          members: {
-            select: {
-              user: true
-            }
-          }
-        }
-      })
-      if (!subpro) {
-        throw notfound
-      }
-      const member = subpro.members.find((e) => e.user.id === param.userId)
-      if (!member) {
-        throw noaccess;
-      }
-
-      return;
-    }
   }
 
   async uploadImageForTiptap(userId: number, file: Express.Multer.File, originalName?: string) {
@@ -629,41 +616,17 @@ export class FindingService {
     userId: number, findingId: number
   }) {
 
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id: param.userId
-      }
+    const { finding } = await await this.checkMemberFinding({
+      findingId: param.findingId,
+      userId: param.userId
     })
-    if (!user) {
-      throw unauthorized;
-    }
-    const finding = await this.prisma.finding.findFirst({
-      where: {
-        id: param.findingId
-      },
-      include: {
-        subProject: {
-          include: {
-            project: {
-              include: {
-                members: true,
-              }
-            }
-          }
-        }
-      }
-    })
-    if (!finding) {
-      throw notfound
-    }
-    const members = finding.subProject.project.members
-    const findMember = members.find((e) => e.userId === param.userId)
-    if (!findMember) {
-      throw unauthorized
-    }
+
     const chatrooms = this.prisma.chatRoom.findMany({
       where: {
         findingId: finding.id,
+      },
+      orderBy: {
+        createdAt: 'desc'
       },
       include: {
         createdBy: {
@@ -680,47 +643,16 @@ export class FindingService {
 
     return chatrooms
   }
+
   async createRoomChat(param: {
     userId: number,
     findingId: number,
     title: string
   }) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id: param.userId
-      }
+    const { user, finding } = await await this.checkMemberFinding({
+      findingId: param.findingId,
+      userId: param.userId
     })
-
-
-    if (!user) {
-      throw unauthorized;
-    }
-    const finding = await this.prisma.finding.findFirst({
-      where: {
-        id: param.findingId
-      },
-      include: {
-        subProject: {
-          include: {
-            project: {
-              include: {
-                members: true,
-              }
-            }
-          }
-        }
-      }
-    })
-    console.log(finding);
-
-    if (!finding) {
-      throw notfound
-    }
-    const members = finding.subProject.project.members
-    const findMember = members.find((e) => e.userId === param.userId)
-    if (!findMember) {
-      throw unauthorized
-    }
     const chatRoom = await this.prisma.chatRoom.create({
       data: {
         title: param.title,
@@ -734,9 +666,28 @@ export class FindingService {
             id: param.userId
           }
         }
+      },
+      include: {
+        createdBy: {
+
+          select: {
+            name: true,
+            id: true,
+            profilePicture: true
+          }
+        }
       }
     })
 
+    const log = await this.prisma.subProjectLog.create(LogQuery.createNewDiscussion({
+      discussionName: chatRoom.title,
+      findingName: finding.name,
+      subprojectId: finding.subProjectId,
+      userName: user.name
+    }))
+
+    this.output.subprojectLog(finding.subProjectId, log)
+    this.output.roomChat(chatRoom)
     return;
 
   }
@@ -751,39 +702,11 @@ export class FindingService {
       value: string,
     }
   ) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id: param.userId
-      }
+    const { user } = await await this.checkMemberFinding({
+      findingId: param.findingId,
+      userId: param.userId
     })
-    if (!user) {
-      throw unauthorized;
-    }
-    const finding = await this.prisma.finding.findFirst({
-      where: {
-        id: param.findingId
-      },
-      include: {
-        subProject: {
-          include: {
-            project: {
-              include: {
-                members: true,
-              }
-            }
-          }
-        }
-      }
-    })
-    if (!finding) {
-      throw notfound
-    }
-    const members = finding.subProject.project.members
-    const findMember = members.find((e) => e.userId === param.userId)
-    if (!findMember) {
-      throw unauthorized
-    }
-    const newChat = this.prisma.chat.create({
+    const newChat = await this.prisma.chat.create({
       data: {
         content: param.value,
         chatRoom: {
@@ -804,9 +727,37 @@ export class FindingService {
         } : undefined,
 
       },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            profilePicture: true,
+          },
+        },
+        replyChat: {
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                profilePicture: true,
+              },
+            },
+          }
+        }
+      }
+    },)
 
-    })
-    return newChat
+    this.output.sendChat(param.chatroomId, newChat)
+
+    return
   }
 
 
@@ -815,38 +766,10 @@ export class FindingService {
     findingId: number;
     name: string;
   }) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id: param.userId
-      }
+    const { finding } = await await this.checkMemberFinding({
+      findingId: param.findingId,
+      userId: param.userId
     })
-    if (!user) {
-      throw unauthorized;
-    }
-    const finding = await this.prisma.finding.findFirst({
-      where: {
-        id: param.findingId
-      },
-      include: {
-        subProject: {
-          include: {
-            project: {
-              include: {
-                members: true,
-              }
-            }
-          }
-        }
-      }
-    })
-    if (!finding) {
-      throw notfound
-    }
-    const members = finding.subProject.project.members
-    const findMember = members.find((e) => e.userId === param.userId)
-    if (!findMember) {
-      throw unauthorized
-    }
     return this.prisma.chatRoom.findMany({
       where: {
         findingId: finding.id,
@@ -854,6 +777,7 @@ export class FindingService {
           startsWith: param.name
         }
       },
+
       include: {
         createdBy: {
           select: {
@@ -872,46 +796,26 @@ export class FindingService {
     findingId: number;
     chatRoomId: number
   }) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        id: param.userId
-      }
+    await this.checkMemberFinding({
+      findingId: param.findingId,
+      userId: param.userId
     })
-    if (!user) {
-      throw unauthorized;
-    }
-    const finding = await this.prisma.finding.findFirst({
-      where: {
-        id: param.findingId
-      },
-      include: {
-        subProject: {
-          include: {
-            project: {
-              include: {
-                members: true,
-              }
-            }
-          }
-        }
-      }
-    })
-    if (!finding) {
-      throw notfound
-    }
-    const members = finding.subProject.project.members
-    const findMember = members.find((e) => e.userId === param.userId)
-    if (!findMember) {
-      throw unauthorized
-    }
     return this.prisma.chatRoom.findFirst({
       where: {
         id: param.chatRoomId,
       },
       include: {
-        chats: {
-          take: 20,
+        createdBy: {
           select: {
+            name: true,
+            id: true,
+            profilePicture: true
+          }
+
+        },
+        chats: {
+          select: {
+            id: true,
             content: true,
             createdAt: true,
             sender: {
@@ -943,5 +847,69 @@ export class FindingService {
     })
   }
 
+
+  private async checkMemberFinding(param: {
+    userId: number,
+    findingId: number,
+    retest?: boolean
+  }): Promise<{ finding: FindingWithSubprojectRetest, user: User }> {
+    let query = {}
+    if (param.retest === true) {
+      query = {
+        retestHistories: {
+          select: {
+            createdAt: true,
+            status: true,
+            id: true,
+            version: true,
+            tester: {
+              include: {
+                profilePicture: true,
+              }
+            }
+          }
+        }
+      }
+    }
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId
+      }
+    })
+    if (!user) {
+      throw unauthorized;
+    }
+
+
+    const finding = await this.prisma.finding.findFirst({
+      where: {
+        id: param.findingId
+      },
+      include: {
+        ...query,
+        subProject: {
+          include: {
+            project: {
+              include: {
+                members: true,
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (!finding) {
+      throw notfound
+    }
+    const members = finding.subProject.project.members
+    const findMember = members.find((e) => e.userId === param.userId)
+    if (!findMember) {
+      throw unauthorized
+    }
+    return {
+      user, finding
+    }
+  }
 
 }
