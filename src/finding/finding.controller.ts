@@ -5,8 +5,11 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Request } from 'express';
@@ -16,11 +19,14 @@ import { FindingEventHeader } from 'src/types/header';
 import { EventSidebarFinding } from 'src/types/sidebar';
 import { FINDING_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
 import { extractUserId } from 'src/utils/extract/userId';
+import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
 import {
   EditCVSSProp,
   EditFProp,
   EditFindingDto,
   EditResetsProp,
+  NewChatDto,
+  NewChatRoomDto,
 } from './dto/create-finding.dto';
 import { FindingService } from './finding.service';
 
@@ -29,7 +35,7 @@ export class FindingController {
   constructor(
     private readonly findingService: FindingService,
     private readonly emitter: EventEmitter2,
-  ) {}
+  ) { }
 
   @UseGuards(AccessTokenGuard)
   @Post('new/:subprojectId')
@@ -169,10 +175,32 @@ export class FindingController {
       cvss: param,
     });
     this.emitter.emit(FINDING_ON_MESSAGE.CVSS, {
-      findingId:cvss.findingId,
+      findingId: cvss.findingId,
       cvss: cvss.data
     });
     return cvss
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @UseInterceptors(uploadConfig())
+  @Post('upload')
+  async uploadImage(
+    @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
+    @Req() req: Request,
+  ) {
+    const userId = extractUserId(req)
+    const originalName = req.body.originalName;
+    return this.findingService.uploadImageForTiptap(userId, file, originalName)
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post('upload/:name')
+  async deleteFile(
+    @Req() req: Request,
+    @Param("name") name: string
+  ) {
+    const userId = extractUserId(req)
+    return this.findingService.deleteImageTiptap(userId, name)
   }
 
   @UseGuards(AccessTokenGuard)
@@ -194,4 +222,58 @@ export class FindingController {
       userId: userId,
     });
   }
+
+
+  @UseGuards(AccessTokenGuard)
+  @Get(':id/discussions')
+  async getDiscussion(@Req() req: Request, @Param('id') findingId: string, @Query('query') query: string) {
+    const userId = extractUserId(req)
+    if (query && query.length > 0) {
+      return this.findingService.searchRoomChat({ userId, findingId: +findingId, name: query })
+    } else {
+      return this.findingService.getAllChatRoom({
+        userId: userId,
+        findingId: +findingId
+      })
+    }
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post(":id/discussions")
+  async postDiscussion(@Req() req: Request, @Param('id') findingId: string, @Body() param: NewChatRoomDto) {
+    const userId = extractUserId(req)
+    console.log(userId);
+
+    return this.findingService.createRoomChat({
+      findingId: +findingId,
+      userId: userId,
+      title: param.title
+    })
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get(":id/chats/:roomId")
+  async getChats(@Req() req: Request, @Param('id') findingId: string, @Param('roomId') roomId: string) {
+    const userId = extractUserId(req)
+    return this.findingService.getRoomChatDetail({
+      chatRoomId: +roomId,
+      findingId: +findingId,
+      userId: +userId
+    })
+  }
+
+
+  @UseGuards(AccessTokenGuard)
+  @Post(":id/chats/:roomId")
+  async postChats(@Req() req: Request, @Param('id') findingId: string, @Param('roomId') roomId: string, @Body() param: NewChatDto) {
+    const userId = extractUserId(req)
+    return this.findingService.createChats({
+      findingId: +findingId,
+      userId: userId,
+      chatroomId: +roomId,
+      value: param.content,
+      replyChatId: param.replyChatId
+    })
+  }
+
 }

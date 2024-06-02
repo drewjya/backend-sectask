@@ -1,14 +1,13 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { File, ProjectLog, ProjectRole } from '@prisma/client';
+import { ProjectRole } from '@prisma/client';
+import { LogQuery } from 'src/common/query/log.query';
 import { ProjectQuery } from 'src/common/query/project.query';
+import { OutputService } from 'src/output/output.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
-import { noaccess, notfound } from 'src/utils/exception/common.exception';
+import { noaccess, notfound, unauthorized } from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
 import { CreateProjectDto } from './request/project.request';
-import { LogQuery } from 'src/common/query/log.query';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { OutputService } from 'src/output/output.service';
 
 @Injectable()
 export class ProjectService {
@@ -580,7 +579,7 @@ export class ProjectService {
       const log = await tx.projectLog.create(LogQuery.addFileProject({
         fileName: attachment.originalName ?? attachment.name,
         projectId: param.projectId,
-        type: param.type ==='attachment'? 'Attachment':'Report',
+        type: param.type === 'attachment' ? 'Attachment' : 'Report',
         userName: user.name
       }))
       return { attachment, log }
@@ -637,5 +636,5 @@ export class ProjectService {
     this.output.projectFile(param.type, 'remove', param.projectId, attachment)
     unlinkFile(attachment.imagePath);
     return attachment;
-  }
+  } 
 }

@@ -172,6 +172,7 @@ export class OutputService {
                 createdAt: data.createdAt
             }
         };
+        
         this.emitter.emit(SUBPROJECT_ON_MESSAGE.LOG, val);
     }
 

@@ -3,7 +3,8 @@ import { DocType, ProjectRole } from '@prisma/client';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { uuid } from 'src/common/uuid';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { noaccess, notfound } from 'src/utils/exception/common.exception';
+import { noaccess, notfound, unauthorized } from 'src/utils/exception/common.exception';
+import { unlinkFile } from 'src/utils/pipe/file.pipe';
 import { basicCvss } from './finding.enum';
 
 @Injectable()
@@ -479,7 +480,7 @@ export class FindingService {
         cvssDetail: true
       },
     });
-    
+
     if (!finding) {
       throw noaccess;
     }
@@ -555,12 +556,12 @@ export class FindingService {
       }
     } else {
       const subpro = await this.prisma.subProject.findFirst({
-        where:{
+        where: {
           id: param.subprojectId
         },
-        select:{
-          members:{
-            select:{
+        select: {
+          members: {
+            select: {
               user: true
             }
           }
@@ -569,7 +570,7 @@ export class FindingService {
       if (!subpro) {
         throw notfound
       }
-      const member = subpro.members.find((e)=>e.user.id===param.userId)
+      const member = subpro.members.find((e) => e.user.id === param.userId)
       if (!member) {
         throw noaccess;
       }
@@ -577,4 +578,370 @@ export class FindingService {
       return;
     }
   }
+
+  async uploadImageForTiptap(userId: number, file: Express.Multer.File, originalName?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+      }
+    })
+    if (!user) {
+      throw unauthorized
+    }
+    const uploadFile = await this.prisma.file.create({
+      data: {
+        contentType: file.mimetype,
+        imagePath: file.path,
+        name: file.filename,
+        originalName: originalName
+      }
+    })
+    return uploadFile;
+  }
+
+  async deleteImageTiptap(userId: number, name: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+      }
+    })
+    if (!user) {
+      throw unauthorized
+    }
+    const uploadFile = await this.prisma.file.findFirst({
+      where: {
+        name: name
+      }
+    })
+    if (!uploadFile) {
+      throw notfound
+    }
+    const deleteFile = await this.prisma.file.delete({
+      where: {
+        id: uploadFile.id
+      }
+    })
+    unlinkFile(deleteFile.imagePath);
+    return uploadFile;
+  }
+
+  async getAllChatRoom(param: {
+    userId: number, findingId: number
+  }) {
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId
+      }
+    })
+    if (!user) {
+      throw unauthorized;
+    }
+    const finding = await this.prisma.finding.findFirst({
+      where: {
+        id: param.findingId
+      },
+      include: {
+        subProject: {
+          include: {
+            project: {
+              include: {
+                members: true,
+              }
+            }
+          }
+        }
+      }
+    })
+    if (!finding) {
+      throw notfound
+    }
+    const members = finding.subProject.project.members
+    const findMember = members.find((e) => e.userId === param.userId)
+    if (!findMember) {
+      throw unauthorized
+    }
+    const chatrooms = this.prisma.chatRoom.findMany({
+      where: {
+        findingId: finding.id,
+      },
+      include: {
+        createdBy: {
+          select: {
+            name: true,
+            id: true,
+            profilePicture: true
+          }
+
+        },
+      }
+    })
+
+
+    return chatrooms
+  }
+  async createRoomChat(param: {
+    userId: number,
+    findingId: number,
+    title: string
+  }) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId
+      }
+    })
+
+
+    if (!user) {
+      throw unauthorized;
+    }
+    const finding = await this.prisma.finding.findFirst({
+      where: {
+        id: param.findingId
+      },
+      include: {
+        subProject: {
+          include: {
+            project: {
+              include: {
+                members: true,
+              }
+            }
+          }
+        }
+      }
+    })
+    console.log(finding);
+
+    if (!finding) {
+      throw notfound
+    }
+    const members = finding.subProject.project.members
+    const findMember = members.find((e) => e.userId === param.userId)
+    if (!findMember) {
+      throw unauthorized
+    }
+    const chatRoom = await this.prisma.chatRoom.create({
+      data: {
+        title: param.title,
+        finding: {
+          connect: {
+            id: finding.id
+          }
+        },
+        createdBy: {
+          connect: {
+            id: param.userId
+          }
+        }
+      }
+    })
+
+    return;
+
+  }
+
+
+  async createChats(
+    param: {
+      userId: number,
+      replyChatId?: number,
+      findingId: number,
+      chatroomId: number
+      value: string,
+    }
+  ) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId
+      }
+    })
+    if (!user) {
+      throw unauthorized;
+    }
+    const finding = await this.prisma.finding.findFirst({
+      where: {
+        id: param.findingId
+      },
+      include: {
+        subProject: {
+          include: {
+            project: {
+              include: {
+                members: true,
+              }
+            }
+          }
+        }
+      }
+    })
+    if (!finding) {
+      throw notfound
+    }
+    const members = finding.subProject.project.members
+    const findMember = members.find((e) => e.userId === param.userId)
+    if (!findMember) {
+      throw unauthorized
+    }
+    const newChat = this.prisma.chat.create({
+      data: {
+        content: param.value,
+        chatRoom: {
+          connect: {
+            id: param.chatroomId,
+          },
+        },
+        sender: {
+          connect: {
+            id: user.id
+          },
+        },
+
+        replyChat: param.replyChatId ? {
+          connect: {
+            id: param.replyChatId
+          }
+        } : undefined,
+
+      },
+
+    })
+    return newChat
+  }
+
+
+  async searchRoomChat(param: {
+    userId: number;
+    findingId: number;
+    name: string;
+  }) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId
+      }
+    })
+    if (!user) {
+      throw unauthorized;
+    }
+    const finding = await this.prisma.finding.findFirst({
+      where: {
+        id: param.findingId
+      },
+      include: {
+        subProject: {
+          include: {
+            project: {
+              include: {
+                members: true,
+              }
+            }
+          }
+        }
+      }
+    })
+    if (!finding) {
+      throw notfound
+    }
+    const members = finding.subProject.project.members
+    const findMember = members.find((e) => e.userId === param.userId)
+    if (!findMember) {
+      throw unauthorized
+    }
+    return this.prisma.chatRoom.findMany({
+      where: {
+        findingId: finding.id,
+        title: {
+          startsWith: param.name
+        }
+      },
+      include: {
+        createdBy: {
+          select: {
+            name: true,
+            id: true,
+            profilePicture: true
+          }
+
+        },
+      }
+    })
+  }
+
+  async getRoomChatDetail(param: {
+    userId: number;
+    findingId: number;
+    chatRoomId: number
+  }) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId
+      }
+    })
+    if (!user) {
+      throw unauthorized;
+    }
+    const finding = await this.prisma.finding.findFirst({
+      where: {
+        id: param.findingId
+      },
+      include: {
+        subProject: {
+          include: {
+            project: {
+              include: {
+                members: true,
+              }
+            }
+          }
+        }
+      }
+    })
+    if (!finding) {
+      throw notfound
+    }
+    const members = finding.subProject.project.members
+    const findMember = members.find((e) => e.userId === param.userId)
+    if (!findMember) {
+      throw unauthorized
+    }
+    return this.prisma.chatRoom.findFirst({
+      where: {
+        id: param.chatRoomId,
+      },
+      include: {
+        chats: {
+          take: 20,
+          select: {
+            content: true,
+            createdAt: true,
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                profilePicture: true,
+              },
+            },
+            replyChat: {
+              select: {
+                content: true,
+                createdAt: true,
+                sender: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    profilePicture: true,
+                  },
+                },
+              }
+            }
+          }
+        }
+      }
+
+    })
+  }
+
+
 }

@@ -340,6 +340,8 @@ export class SubprojectService {
       })
     }
     const log = await this.prisma.subProjectLog.create(query)
+    
+    
     this.output.subprojectLog(subproject.id, log)
     this.output.subprojectHeader(subproject)
     this.output.subprojectSidebar('edit', subproject, subproject.project.members.map((e)=>e.userId))
@@ -408,38 +410,46 @@ export class SubprojectService {
       role: [param.acceptRole],
     });
     
-    let file:File
-    if (param.type === 'attachment') {
-      file = await this.prisma.file.create({
-        data: {
-          name: param.file.filename,
-          originalName: param.originalName,
-          contentType: param.file.mimetype,
-          imagePath: param.file.path,
-          subProjectAttachments: {
-            connect: {
-              id: param.subprojectId,
-            },
-          },
-        },
-      });
-     
-    } else {
-      file = await this.prisma.file.create({
-        data: {
-          name: param.file.filename,
-          originalName: param.originalName,
-          contentType: param.file.mimetype,
-          imagePath: param.file.path,
-          projectReports: {
-            connect: {
-              id: param.subprojectId,
-            },
-          },
-        },
-      });
-    }
+  
+  
 
+    let query: {
+      data: {
+        name: string,
+        originalName: string,
+        contentType: string,
+        imagePath: string,
+        subProjectReports?: any,
+        subProjectAttachments?: any
+      }
+    } = {
+      data: {
+        name: param.file.filename,
+        originalName: param.originalName,
+        contentType: param.file.mimetype,
+        imagePath: param.file.path,
+      },
+    };
+    if (param.type === "attachment") {
+      query.data = {
+        ...query.data,
+        subProjectAttachments: {
+          connect: {
+            id: param.subprojectId,
+          },
+        }
+      }
+    } else {
+      query.data = {
+        ...query.data,
+        subProjectReports: {
+          connect: {
+            id: param.subprojectId
+          }
+        }
+      }
+    }
+    const file  = await this.prisma.file.create(query)
     const log = await this.prisma.subProjectLog.create(LogQuery.addFileSubProject({
       type: param.type==="attachment"?"Attachment":"Report",
       fileName: file.originalName??file.name,

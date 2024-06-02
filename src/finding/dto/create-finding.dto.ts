@@ -4,11 +4,30 @@ import { Transform } from 'class-transformer';
 import {
   IsDate,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   MaxDate,
 } from 'class-validator';
 
+
+export class NewChatRoomDto {
+  @IsNotEmpty()
+  @IsString()
+  @ApiProperty()
+  title: string
+}
+
+export class NewChatDto {
+  @IsNotEmpty()
+  @IsString()
+  @ApiProperty()
+  content: string
+
+  @IsOptional()
+  @ApiProperty()
+  replyChatId?: number
+}
 
 export class EditFindingDto {
   @IsNotEmpty()

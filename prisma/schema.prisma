@@ -29,6 +29,7 @@ model User {
   Finding          Finding[]
   TesterFinding    TesterFinding[]
   Project          Project[]
+  ChatRoom         ChatRoom[]
 }
 
 model File {
@@ -163,8 +164,8 @@ model Finding {
   subProjectId Int
   userId       Int
 
-  chatRoom ChatRoom[]
-  document DocumentWrapper[]
+  chatRoom      ChatRoom[]
+  document      DocumentWrapper[]
   testerFinding TesterFinding[]
 
   @@map("findings")
@@ -182,13 +183,13 @@ model TesterFinding {
   @@map("tester_findings")
 }
 
-model DocumentWrapper{
-  id        Int     @id @default(autoincrement())
-  finding   Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
-  findingId Int
-  document Document @relation(fields: [documentId], references: [id])
-  documentId String @unique
-  
+model DocumentWrapper {
+  id         Int      @id @default(autoincrement())
+  finding    Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  findingId  Int
+  document   Document @relation(fields: [documentId], references: [id])
+  documentId String   @unique
+
   type DocType
 }
 
@@ -200,10 +201,8 @@ enum DocType {
 model Document {
   id   String @id
   data Bytes
-  
+
   wrapper DocumentWrapper?
-  
-  
 }
 
 model CvssDetail {
@@ -216,12 +215,14 @@ model CvssDetail {
 model ChatRoom {
   id        Int      @id @default(autoincrement())
   title     String
+  createdBy User?    @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   chats     Chat[]
 
   finding   Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
   findingId Int
+  userId    Int?
 }
 
 model Chat {

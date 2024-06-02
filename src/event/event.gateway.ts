@@ -278,6 +278,14 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .emit(FINDING_EVENT.HEADER, value);
   }
 
+  @OnEvent(SUBPROJECT_ON_MESSAGE.LOG)
+  async onSubprojectLog(payload: any) {
+    const value: EventLogData = payload;    
+    this.server
+      .in(getSubProjectRoom(value.docId))
+      .emit(SUBPROJECT_EVENT.LOG, value.data);
+  }
+
 
   @OnEvent(FINDING_ON_MESSAGE.FINDINGPROP)
   onFindingProp(payload: any) { }
