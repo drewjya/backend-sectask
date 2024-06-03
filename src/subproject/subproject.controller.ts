@@ -49,7 +49,10 @@ export class SubprojectController {
   @UseGuards(AccessTokenGuard)
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: Request) {
+    console.log("Sini Kah");
+
     const userId = extractUserId(req);
+
     return this.subprojectService.findDetail({
       subprojectId: +id,
       userId: userId,

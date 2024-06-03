@@ -12,18 +12,20 @@ export class AccessTokenGuard extends AuthGuard('jwt') {
   async canActivate(context: ExecutionContext) {
     try {
       const load = await super.canActivate(context);
-      const request = context.switchToHttp().getRequest<Request>();
+
 
       if (load) {
+        const request = context.switchToHttp().getRequest<Request>();
         const verify = request.user['sessionId']
         const userId = request.user['sub']
         await this.cache.verifySessionUser(+userId, verify)
-
-
         return true;
+      } else {
+
+        throw unauthorized;
       }
-      throw unauthorized;
     } catch (error) {
+
       throw unauthorized;
     }
   }
