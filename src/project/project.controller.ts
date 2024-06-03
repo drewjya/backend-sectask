@@ -18,12 +18,10 @@ import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProjectRole } from '@prisma/client';
 import { EventFile } from 'src/types/file';
-import { ProjectEventHeader } from 'src/types/header';
-import { EventMember, EventSubprojectMember } from 'src/types/member';
-import { EventSidebarProject } from 'src/types/sidebar';
-import { PROJECT_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
+import { PROJECT_ON_MESSAGE } from 'src/utils/event';
 import { extractUserId } from 'src/utils/extract/userId';
 import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
+import { VCacheService } from 'src/vcache/vcache.service';
 import { ProjectService } from './project.service';
 import {
   AddMemberDto,
@@ -36,7 +34,8 @@ export class ProjectController {
   constructor(
     private readonly projectService: ProjectService,
     private emitter: EventEmitter2,
-  ) {}
+    private cache: VCacheService
+  ) { }
   @UseGuards(AccessTokenGuard)
   @Post('new')
   async create(
@@ -63,7 +62,7 @@ export class ProjectController {
   }
   @UseGuards(AccessTokenGuard)
   @Get('sidebar')
-  getSidebar(@Req() req: Request) {
+  async getSidebar(@Req() req: Request) {
     const userId = extractUserId(req);
     return this.projectService.findSidebarProject(userId);
   }
@@ -151,7 +150,7 @@ export class ProjectController {
       projectId: +id,
       userId: body.userId,
     });
-    
+
   }
 
   @UseGuards(AccessTokenGuard)
@@ -177,7 +176,7 @@ export class ProjectController {
       startDate: body.startDate,
     });
 
-    
+
   }
 
   @UseGuards(AccessTokenGuard)
@@ -189,24 +188,24 @@ export class ProjectController {
     @Param('id') id: string,
   ) {
     const userId = extractUserId(req);
-     await this.projectService.editProfileProject({
+    await this.projectService.editProfileProject({
       userId,
       file,
       projectId: +id,
     });
-    
-    
+
+
   }
 
   @UseGuards(AccessTokenGuard)
   @Delete(':id/picture')
   async deleteImage(@Req() req: any, @Param('id') id: string) {
     const userId = extractUserId(req);
-     await this.projectService.deleteProjectProfile({
+    await this.projectService.deleteProjectProfile({
       userId,
       projectId: +id,
     });
-    
+
 
   }
 
@@ -220,7 +219,7 @@ export class ProjectController {
   ) {
     const userId = extractUserId(req);
     const originalName = req.body.originalName;
-     await this.projectService.uploadProjectFile({
+    await this.projectService.uploadProjectFile({
       userId,
       file,
       originalName,
@@ -239,6 +238,7 @@ export class ProjectController {
     @Param('id') id: string,
   ) {
     const userId = extractUserId(req);
+
     const originalName = req.body.originalName;
     await this.projectService.uploadProjectFile({
       userId,
@@ -248,7 +248,7 @@ export class ProjectController {
       projectId: +id,
       type: 'attachment',
     });
-    
+
   }
 
   @UseGuards(AccessTokenGuard)
@@ -262,7 +262,7 @@ export class ProjectController {
     const newFile = await this.projectService.removeProjectFile({
       userId,
       fileId: +fileId,
-      type:'Report',
+      type: 'Report',
       projectId: +id,
       acceptRole: [ProjectRole.TECHNICAL_WRITER],
     });
@@ -292,7 +292,7 @@ export class ProjectController {
       userId,
       fileId: +fileId,
       projectId: +id,
-      type:'Attachment',
+      type: 'Attachment',
       acceptRole: [ProjectRole.DEVELOPER],
     });
     const val: EventFile = {

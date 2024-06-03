@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { hashPassword, verifyHased } from 'src/common/encrypt';
+import { uuid } from 'src/common/uuid';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
 import {
@@ -9,24 +10,30 @@ import {
   unauthorized,
 } from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
+import { VCacheService } from 'src/vcache/vcache.service';
 
 @Injectable()
 export class AuthService {
   constructor(
+    private cache: VCacheService,
     private prisma: PrismaService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
   private async getTokens(userId: number, email: string) {
+    const sessionId = uuid()
+
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
-        { sub: userId, email },
+        { sub: userId, email, sessionId },
         { expiresIn: '1d', secret: process.env.JWT_ACCESS_SECRET },
       ),
       this.jwtService.signAsync(
-        { sub: userId, email },
+        { sub: userId, email, sessionId },
         { expiresIn: '7d', secret: process.env.JWT_REFRESH_SECRET },
       ),
     ]);
+    await this.cache.setSessionUser(userId, sessionId);
+
     return {
       accessToken,
       refreshToken,

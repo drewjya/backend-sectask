@@ -57,6 +57,7 @@ export const FINDING_EVENT = {
   ONLINE: 'onlineFindingMember',
   FINDINGPROP: 'findingProperty',
   RETEST: 'findingRetest',
+  TESTLIST:'findingTestList',
   CVSS: 'findingCVSS',
   ROOM: 'findingRoomChat',
 };

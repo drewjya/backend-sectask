@@ -30,9 +30,14 @@ export interface SubprojectLogRes extends SubProjectLog {
 }
 
 export class ProjectQuery {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   async getProjectByStatus(params: { userId: number; active: boolean }) {
+    const today = () => {
+      const day = new Date()
+      day.setHours(0, 0, 0, 0)
+      return day
+    }
     const project = await this.prisma.project.findMany({
       where: {
         members: {
@@ -40,6 +45,9 @@ export class ProjectQuery {
             userId: params.userId,
           },
         },
+        endDate: params.active ? {
+          gte: (today())
+        } : undefined,
         archived: !params.active,
       },
       select: {
@@ -62,6 +70,11 @@ export class ProjectQuery {
   }
 
   async getProjectSidebar(params: { userId: number; active: boolean }) {
+    const today = () => {
+      const day = new Date()
+      day.setHours(0, 0, 0, 0)
+      return day
+    }
     const project = await this.prisma.project.findMany({
       where: {
         members: {
@@ -69,6 +82,9 @@ export class ProjectQuery {
             userId: params.userId,
           },
         },
+        endDate: params.active ? {
+          gte: (today())
+        } : undefined,
         archived: !params.active,
       },
       select: {

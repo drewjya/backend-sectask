@@ -1,4 +1,4 @@
-import { Finding, Project, ProjectMember, SubProject, User } from '@prisma/client';
+import { File, Finding, Project, ProjectMember, SubProject, User } from '@prisma/client';
 import { VFile } from 'src/types/file';
 
 export type ProjectSubprojectEvent = {

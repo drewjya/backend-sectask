@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Chat, ChatRoom, File, Project, ProjectLog, ProjectRole, SubProject, SubProjectLog, User } from '@prisma/client';
-import { ProjectSubprojectEvent } from 'src/subproject/entity/subproject.entity';
+import { ChatRoom, File, Prisma, Project, ProjectLog, ProjectRole, SubProject, SubProjectLog, User } from '@prisma/client';
+import { ProjectSubprojectEvent, UserWithFile } from 'src/subproject/entity/subproject.entity';
 import { EventFile } from 'src/types/file';
 import { EventLogData, ProjectEventHeader, SubprojectEventHeader } from 'src/types/header';
 import { EventMember, EventSubprojectMember } from 'src/types/member';
@@ -32,7 +32,7 @@ export interface ChatItem {
         profilePicture?: File
     };
     replyChat?: ChatItem;
-  }
+}
 
 @Injectable()
 export class OutputService {
@@ -204,18 +204,56 @@ export class OutputService {
 
     findingHeader() { }
 
-    findingCvss() { }
+    findingCvss(cvss: {
+        id: number;
+        data: Prisma.JsonValue;
+        findingId: number;
+    }) {
+        this.emitter.emit(FINDING_ON_MESSAGE.CVSS, {
+            findingId: cvss.findingId,
+            cvss: cvss.data
+        });
+    }
 
-    findingFProp() { }
+    findingFProp(param: {
+        values: {
+            category?: string;
+            location?: string;
+            method?: string;
+            environment?: string;
+            application?: string;
+            impact?: string;
+            likelihood?: string;
+        },
+        findingId: number
+    }) {
+        this.emitter.emit(FINDING_ON_MESSAGE.FINDINGPROP, param)
+    }
 
-    findingCVSS() { }
+    
+
+    findingRetest(param: {
+        retest: {
+            createdAt: Date;
+            id: number
+            version: string
+            status?: string
+            tester: UserWithFile
+        }, findingId: number
+    }) {
+        delete param.retest.tester.deletedAt
+        delete param.retest.tester.createdAt
+        delete param.retest.tester.updatedAt
+        delete param.retest.tester.password
+        this.emitter.emit(FINDING_ON_MESSAGE.RETEST, param)
+    }
 
 
     roomChat(room: ChatRoomWithOwner) {
         this.emitter.emit(FINDING_ON_MESSAGE.ROOM, room)
     }
 
-    sendChat(roomId: number, chat:ChatItem){
+    sendChat(roomId: number, chat: ChatItem) {
         const val = {
             roomId: roomId,
             chat: chat

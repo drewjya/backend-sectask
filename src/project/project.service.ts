@@ -5,7 +5,7 @@ import { ProjectQuery } from 'src/common/query/project.query';
 import { OutputService } from 'src/output/output.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiException } from 'src/utils/exception/api.exception';
-import { noaccess, notfound, unauthorized } from 'src/utils/exception/common.exception';
+import { noaccess, notfound } from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
 import { CreateProjectDto } from './request/project.request';
 
@@ -128,7 +128,8 @@ export class ProjectService {
     };
   }
 
-  findActiveProject(userId: number) {
+  async findActiveProject(userId: number) {
+
     return this.projectQuery.getProjectByStatus({ userId, active: true });
   }
 
@@ -636,5 +637,5 @@ export class ProjectService {
     this.output.projectFile(param.type, 'remove', param.projectId, attachment)
     unlinkFile(attachment.imagePath);
     return attachment;
-  } 
+  }
 }

@@ -208,10 +208,7 @@ export class FindingController {
       userId: userId,
       cvss: param,
     });
-    this.emitter.emit(FINDING_ON_MESSAGE.CVSS, {
-      findingId: cvss.findingId,
-      cvss: cvss.data
-    });
+    
     return cvss
   }
 

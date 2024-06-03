@@ -9,3 +9,12 @@ export function extractUserId(req: Request) {
   }
   return user;
 }
+
+
+export function extractSessionId(req: Request) {
+  const sessionId= req.user['sessionId']
+  if(!sessionId){
+    throw unauthorized;
+  }
+  return sessionId
+}

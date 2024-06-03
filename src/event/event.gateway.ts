@@ -12,6 +12,7 @@ import { ChatItem, ChatRoomWithOwner } from 'src/output/output.service';
 import {
   ProjectSubprojectEvent,
   SubprojectFindingDto,
+  UserWithFile,
 } from 'src/subproject/entity/subproject.entity';
 import { EventFile } from 'src/types/file';
 import {
@@ -292,10 +293,38 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 
   @OnEvent(FINDING_ON_MESSAGE.FINDINGPROP)
-  onFindingProp(payload: any) { }
+  onFindingProp(param: {
+    values: {
+      category?: string;
+      location?: string;
+      method?: string;
+      environment?: string;
+      application?: string;
+      impact?: string;
+      likelihood?: string;
+    },
+    findingId: number
+  }) {
+
+    this.server.in(getFindingRoom(param.findingId)).emit(FINDING_EVENT.FINDINGPROP, param.values)
+  }
 
   @OnEvent(FINDING_ON_MESSAGE.RETEST)
-  onFindingRetest(payload: any) { }
+  onFindingRetest(payload: {
+    retest: {
+      createdAt: Date;
+      id: number;
+      version: string;
+      status: string;
+      tester: UserWithFile;
+    };
+    findingId: number;
+  }) {
+    console.log("retest");
+
+    this.server.in(getFindingRoom(payload.findingId)).emit(FINDING_EVENT.RETEST, payload.retest)
+    this.server.in(getFindingRoom(payload.findingId)).emit(FINDING_EVENT.TESTLIST, payload.retest)
+  }
 
   @OnEvent(FINDING_ON_MESSAGE.CVSS)
   onFindingCVSS(payload: {

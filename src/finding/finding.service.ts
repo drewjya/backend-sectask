@@ -60,100 +60,91 @@ export class FindingService {
       throw noaccess;
     }
     // const cr = 
-    const newFind = await this.prisma.$transaction(async (tx) => {
-      const newFinding = await this.prisma.finding.create({
+    const newFind = await this.prisma.finding.create({
 
-        data: {
-          name: 'Untitled Finding',
-          subProject: {
-            connect: {
-              id: param.subprojectId,
-            },
+      data: {
+        name: 'Untitled Finding',
+        subProject: {
+          connect: {
+            id: param.subprojectId,
           },
-          createdBy: {
-            connect: {
-              id: param.userId,
-            },
+        },
+        createdBy: {
+          connect: {
+            id: param.userId,
           },
+        },
 
-          cvssDetail: {
-            create: {
-              data: basicCvss(),
-            },
+        cvssDetail: {
+          create: {
+            data: basicCvss(),
           },
-          description: {
-            create: {
-              data: Buffer.from(''),
-              id: uuid(),
-            }
-          },
-          threatAndRisk: {
-            create: {
-              data: Buffer.from(''),
-              id: uuid(),
-            }
-          },
-          testerFinding: {
-            create: {
-              user: {
-                connect: {
-                  id: param.userId,
-                },
+        },
+        description: {
+          create: {
+            data: Buffer.from(''),
+            id: uuid(),
+          }
+        },
+        threatAndRisk: {
+          create: {
+            data: Buffer.from(''),
+            id: uuid(),
+          }
+        },
+        testerFinding: {
+          create: {
+            user: {
+              connect: {
+                id: param.userId,
               },
             },
           },
         },
-      });
+      },
+      include: {
+        description: true,
+        threatAndRisk: true,
 
-
-      return await this.prisma.finding.findFirst({
-        where: {
-          id: newFinding.id,
+        cvssDetail: {
+          select: {
+            data: true,
+            id: true,
+          }
         },
-        include: {
-          description: true,
-          threatAndRisk: true,
-
-          cvssDetail: {
-            select: {
-              data: true,
-              id: true,
-            }
-          },
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-              profilePicture: {
-                select: {
-                  id: true,
-                  name: true,
-                  originalName: true,
-                  contentType: true,
-                  imagePath: true,
-                  createdAt: true,
-                },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            profilePicture: {
+              select: {
+                id: true,
+                name: true,
+                originalName: true,
+                contentType: true,
+                imagePath: true,
+                createdAt: true,
               },
             },
           },
-          subProject: {
-            select: {
-              id: true,
-              project: {
-                select: {
-                  id: true,
-                  members: {
-                    select: {
-                      userId: true,
-                    },
+        },
+        subProject: {
+          select: {
+            id: true,
+            project: {
+              select: {
+                id: true,
+                members: {
+                  select: {
+                    userId: true,
                   },
                 },
               },
             },
           },
-        }
-      })
-    })
+        },
+      }
+    });
 
     const description = newFind.description
     const threat = newFind.threatAndRisk
@@ -226,9 +217,23 @@ export class FindingService {
       },
       include: {
         cvssDetail: true,
+        retestHistories: {
+          take: 1,
+          include: {
+            tester: {
+              select: {
+                id: true,
+                name: true,
+                profilePicture: true,
+                email: true
 
-        description: true,
-        threatAndRisk: true,
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        },
         createdBy: {
           select: {
             profilePicture: true,
@@ -281,10 +286,21 @@ export class FindingService {
 
     delete finding.subProject.members;
 
+    let retestProperty
+    if (finding.retestHistories && finding.retestHistories.length > 0) {
+      retestProperty = {
+        lastUpdated: finding.retestHistories[0].createdAt,
+        tester: finding.retestHistories[0].tester,
+        version: finding.retestHistories[0].version,
+        status: finding.retestHistories[0].status
+      }
 
+    }
+    delete finding.retestHistories
 
     return {
       ...finding,
+      retestProperty,
       isEditor: isEditor ? true : false,
     };
   }
@@ -330,6 +346,10 @@ export class FindingService {
       },
     });
     this.notifyEdit({ userId: param.userId, findingId: param.findingId });
+    this.output.findingFProp({
+      values: param.properties,
+      findingId: param.findingId
+    })
     return newFInding;
   }
 
@@ -387,43 +407,6 @@ export class FindingService {
     return newFInding;
   }
 
-  async editRetestProperties(param: {
-    properties: {
-      latestUpdate?: Date;
-      // tester?: string;
-      status?: string;
-      releases?: string;
-    };
-    userId: number;
-    findingId: number;
-  }) {
-    const finding = await this.prisma.finding.findFirst({
-      where: { id: param.findingId },
-      select: {
-        subProjectId: true,
-      },
-    });
-    if (!finding) {
-      throw noaccess;
-    }
-    await this.authorizedEditor({
-      subprojectId: finding.subProjectId,
-      userId: param.userId,
-    });
-    let newFInding = await this.prisma.finding.update({
-      where: {
-        id: param.findingId,
-      },
-      data: {
-        latestUpdate: param.properties.latestUpdate,
-        //TODO: tester: param.properties.tester,
-        status: param.properties.status,
-        releases: param.properties.releases,
-      },
-    });
-    this.notifyEdit({ userId: param.userId, findingId: param.findingId });
-    return newFInding;
-  }
 
   async createRetest(param: {
     userId: number;
@@ -459,12 +442,27 @@ export class FindingService {
         }, content: param.content,
         status: param.status,
         version: param.version,
-
+      },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        findingId: true,
+        tester: {
+          include: {
+            profilePicture: true,
+          }
+        },
+        version: true,
       }
     })
 
     //TODO: ADD LOG
     //TODO: ADD EVENT
+    this.output.findingRetest({
+      retest: retest,
+      findingId: param.findingId,
+    })
   }
 
 
@@ -482,7 +480,7 @@ export class FindingService {
 
       finding.retestHistories.forEach((e) => {
         delete e.tester.password
-        delete e.tester.email
+        delete e.tester.profilePictureId
         delete e.tester.createdAt
         delete e.tester.deletedAt
         delete e.tester.updatedAt
@@ -547,7 +545,7 @@ export class FindingService {
       subprojectId: finding.subProjectId,
       userId: param.userId,
     });
-    return this.prisma.cvssDetail.update({
+    const val = await this.prisma.cvssDetail.update({
       where: {
         id: finding.cvssDetail.id,
       },
@@ -555,6 +553,7 @@ export class FindingService {
         data: param.cvss,
       },
     });
+    this.output.findingCvss(val)
   }
 
   async deleteFinding(param: { userId: number; findingId: number }) {

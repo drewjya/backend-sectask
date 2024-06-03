@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
+import { OutputModule } from 'src/output/output.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { VCacheModule } from 'src/vcache/vcache.module';
 import { ProjectController } from './project.controller';
 import { ProjectService } from './project.service';
-import { OutputModule } from 'src/output/output.module';
 
 @Module({
   controllers: [ProjectController],
   providers: [ProjectService],
-  imports: [PrismaModule, OutputModule],
+  imports: [PrismaModule, OutputModule, VCacheModule],
 })
-export class ProjectModule {}
+export class ProjectModule { }

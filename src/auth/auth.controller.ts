@@ -13,7 +13,7 @@ import {
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
 import { RefreshTokenGuard } from 'src/common/guard/refresh-token.guard';
-import { extractUserId } from 'src/utils/extract/userId';
+import { extractSessionId, extractUserId } from 'src/utils/extract/userId';
 import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
 import { AuthService } from './auth.service';
 import {
@@ -25,7 +25,7 @@ import {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('login')
   login(@Body() body: LoginDto) {
