@@ -13,10 +13,8 @@ export class VCacheService {
     async verifySessionUser(userId: number, sessionId: string) {
 
         const value = await this.cacheManager.get(`user:${userId}`)
-        console.log(value, sessionId);
 
         if (value !== sessionId) {
-            console.log(value, sessionId, 'Before Unauthorized');
             throw unauthorized;
         }
         return true
