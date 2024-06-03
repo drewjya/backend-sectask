@@ -25,38 +25,50 @@ model User {
   deletedAt        DateTime?
   projects         ProjectMember[]
   subProjects      SubprojectMember[]
-  Chat             Chat[]
+  chat             Chat[]
+  Finding          Finding[]
+  TesterFinding    TesterFinding[]
+  Project          Project[]
+  ChatRoom         ChatRoom[]
+  RetestHistory    RetestHistory[]
 }
 
 model File {
-  id          Int       @id @default(autoincrement())
-  name        String
-  imagePath   String
-  contentType String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-  users       User[]
+  id           Int       @id @default(autoincrement())
+  name         String
+  imagePath    String
+  originalName String?
+  contentType  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+  users        User[]
 
   projectAttachments    Project[]    @relation("ProjectAttachments")
   projectReports        Project[]    @relation("ProjectReports")
   subProjectAttachments SubProject[] @relation("SubProjectAttachments")
   subProjectReports     SubProject[] @relation("SubProjectReports")
   project               Project[]
-  Block                 Block[]
 }
 
-model RecentActivities {
+model ProjectLog {
   id          Int       @id @default(autoincrement())
   title       String
   description String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
+  project     Project[]
+}
 
-  project    Project[]
-  subProject SubProject[]
-  finding    Finding[]
+model SubProjectLog {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+  subproject  SubProject[]
 }
 
 model Project {
@@ -64,6 +76,7 @@ model Project {
   name             String
   archived         Boolean
   startDate        DateTime
+  owner            User            @relation(fields: [ownerId], references: [id])
   endDate          DateTime
   projectPictureId Int?
   projectPicture   File?           @relation(fields: [projectPictureId], references: [id])
@@ -74,109 +87,142 @@ model Project {
   updatedAt        DateTime        @updatedAt
   deletedAt        DateTime?
 
-  subProjects        SubProject[]
-  recentActivities   RecentActivities @relation(fields: [recentActivitiesId], references: [id])
-  recentActivitiesId Int
+  subProjects      SubProject[]
+  recentActivities ProjectLog[]
+  ownerId          Int
 }
 
 model ProjectMember {
-  id        Int         @id @default(autoincrement())
-  member    User        @relation(fields: [memberId], references: [id])
-  memberId  Int
-  role      ProjectRole
-  project   Project     @relation(fields: [projectId], references: [id])
-  projectId Int
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  deletedAt DateTime?
+  id               Int                @id @default(autoincrement())
+  member           User               @relation(fields: [userId], references: [id])
+  userId           Int
+  role             ProjectRole
+  project          Project            @relation(fields: [projectId], references: [id])
+  projectId        Int
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  deletedAt        DateTime?
+  subprojectMember SubprojectMember[]
 
-  @@unique([projectId, memberId])
+  @@unique([projectId, userId])
 }
 
 model SubProject {
-  id                 Int                @id @default(autoincrement())
-  name               String
-  startDate          DateTime
-  endDate            DateTime
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  deletedAt          DateTime?
-  members            SubprojectMember[]
-  findings           Finding[]
-  attachments        File[]             @relation("SubProjectAttachments")
-  reports            File[]             @relation("SubProjectReports")
-  recentActivities   RecentActivities   @relation(fields: [recentActivitiesId], references: [id])
-  recentActivitiesId Int
-  project            Project            @relation(fields: [projectId], references: [id])
-  projectId          Int
-  chatRoom           ChatRoom           @relation(fields: [chatRoomId], references: [id])
-  chatRoomId         Int
+  id               Int                @id @default(autoincrement())
+  name             String
+  startDate        DateTime
+  endDate          DateTime
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  deletedAt        DateTime?
+  members          SubprojectMember[]
+  findings         Finding[]
+  attachments      File[]             @relation("SubProjectAttachments")
+  reports          File[]             @relation("SubProjectReports")
+  recentActivities SubProjectLog[]
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId Int
 }
 
 model SubprojectMember {
-  id           Int            @id @default(autoincrement())
-  role         SubprojectRole
-  subproject   SubProject     @relation(fields: [subprojectId], references: [id])
-  subprojectId Int
-  user         User           @relation(fields: [userId], references: [id])
-  userId       Int
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  deletedAt    DateTime?
+  id Int @id @default(autoincrement())
 
-  @@unique([subprojectId, userId])
+  subproject      SubProject    @relation(fields: [subprojectId], references: [id])
+  subprojectId    Int
+  user            User          @relation(fields: [userId], references: [id])
+  userId          Int
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+  projectMemberId Int
+  projectMember   ProjectMember @relation(fields: [projectMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([subprojectId, userId, projectMemberId])
 }
 
 model Finding {
-  id          Int      @id @default(autoincrement())
-  name        String
-  risk        String?
-  location    String?
-  method      String?
-  environment String?
-  application String?
-  impact      String?
-  likelihood  String?
-  findingDate DateTime
+  id           Int       @id @default(autoincrement())
+  name         String
+  createdBy    User      @relation(fields: [userId], references: [id])
+  category     String?
+  location     String?
+  method       String?
+  environment  String?
+  application  String?
+  impact       String?
+  likelihood   String?
+  latestUpdate DateTime?
 
-  description    Block[] @relation("FindingsDescription")
-  threatAndRisk  Block[] @relation("FindingsThreat")
-  businessImpact Block[] @relation("FindingsBusinessImpact")
-  recomendation  Block[] @relation("FindingsRecomendation")
-  retestResult   Block[] @relation("FindingsRetestResult")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+  cvssDetail CvssDetail?
+  status     String?
+  releases   String?
 
-  subProject         SubProject       @relation(fields: [subProjectId], references: [id])
-  subProjectId       Int
-  recentActivities   RecentActivities @relation(fields: [recentActivitiesId], references: [id])
-  recentActivitiesId Int
+  subProject   SubProject @relation(fields: [subProjectId], references: [id])
+  subProjectId Int
+  userId       Int
+
+  description   Document @relation("FindingDescription", fields: [descriptionId], references: [id])
+  threatAndRisk Document @relation("FindindThreat", fields: [threatAndRiskId], references: [id])
+
+  retestHistories RetestHistory[]
+  chatRoom        ChatRoom[]
+  testerFinding   TesterFinding[]
+  threatAndRiskId String
+  descriptionId   String
 }
 
-model Block {
-  id                    String    @id @default(uuid())
-  content               String    @default("<p></p>")
-  type                  BlockType @default(PARAGRAPH)
-  fileId                Int?
-  file                  File?     @relation(fields: [fileId], references: [id])
-  isChecked             Boolean   @default(false)
-  previousBlockId       String?   @unique
-  previousBlock         Block?    @relation("BlockPreviousBlock", fields: [previousBlockId], references: [id])
-  nextBlock             Block?    @relation("BlockPreviousBlock")
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  findingDescriptions   Finding[] @relation("FindingsDescription")
-  findingThreatAndRisk  Finding[] @relation("FindingsThreat")
-  findingBusinessImpact Finding[] @relation("FindingsBusinessImpact")
-  findingRecomendation  Finding[] @relation("FindingsRecomendation")
-  findingRetestResult   Finding[] @relation("FindingsRetestResult")
+model RetestHistory {
+  id        Int      @id @default(autoincrement())
+  status    String
+  version   String
+  tester    User     @relation(fields: [testerId], references: [id])
+  testerId  Int
+  content   String
+  createdAt DateTime @default(now())
+  finding   Finding? @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  findingId Int?
+}
+
+model TesterFinding {
+  id        Int     @id @default(autoincrement())
+  user      User    @relation(fields: [userId], references: [id])
+  finding   Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  userId    Int
+  findingId Int
+  active    Boolean @default(true)
+
+  @@unique([userId, findingId])
+}
+
+model Document {
+  id           String    @id
+  data         Bytes
+  descriptions Finding[] @relation("FindingDescription")
+  threats      Finding[] @relation("FindindThreat")
+}
+
+model CvssDetail {
+  id        Int     @id @default(autoincrement())
+  data      Json
+  finding   Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  findingId Int     @unique
 }
 
 model ChatRoom {
   id        Int      @id @default(autoincrement())
+  title     String
+  createdBy User?    @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   chats     Chat[]
 
-  SubProject SubProject[]
+  finding   Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  findingId Int
+  userId    Int?
 }
 
 model Chat {
@@ -190,36 +236,13 @@ model Chat {
   repliedBy   Chat[]   @relation("Replies")
 
   userId     Int
-  ChatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
+  chatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
   chatRoomId Int?
-}
-
-enum BlockType {
-  HEADING_1
-  HEADING_2
-  HEADING_3
-  BLOCK_QUOTES
-  BULLET_LIST
-  NUMBERED_LIST
-  CHECKBOX
-  PARAGRAPH
-  DIVIDER
-  FILE
-  IMAGE
-  COLLECTION
 }
 
 enum ProjectRole {
   VIEWER
-  OWNER
-  DEVELOPER
-  TECHNICAL_WRITER
-}
-
-enum SubprojectRole {
   PM
   DEVELOPER
   TECHNICAL_WRITER
-  GUEST
-  CONSULTANT
 }

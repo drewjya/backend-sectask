@@ -1,59 +1,49 @@
-import { Module } from '@nestjs/common';
-
-import { AuthController } from './module/auth/auth.controller';
-import { AuthModule } from './module/auth/auth.module';
-import { AuthService } from './module/auth/auth.service';
-import { PrismaModule } from './prisma/prisma.module';
-import { UserModule } from './user/user.module';
-
 import { CacheModule } from '@nestjs/cache-manager';
-import { JwtModule } from '@nestjs/jwt';
-import { redisStore } from 'cache-manager-redis-yet';
-
-// import { WsJwtGuard } from './auth/ws-jwt/ws-jwt.guard';
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { EventsModule } from './module/events/events.module';
-import { FindingModule } from './module/finding/finding.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { redisStore } from 'cache-manager-redis-yet';
+import { RedisClientOptions } from 'redis';
+import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
+import { EventModule } from './event/event.module';
+import { FileModule } from './file/file.module';
+import { FindingModule } from './finding/finding.module';
+import { OutputModule } from './output/output.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { ProjectModule } from './project/project.module';
+import { SubprojectModule } from './subproject/subproject.module';
+import { UserModule } from './user/user.module';
+import { VCacheModule } from './vcache/vcache.module';
 
-import { FileUploadModule } from './module/file-upload/file-upload.module';
-import { MinioClientModule } from './module/minio-client/minio-client.module';
-import { ProjectModule } from './module/project/project.module';
-import { RepositoryModule } from './module/repository/repository.module';
-import { SubprojectModule } from './module/subproject/subproject.module';
-
-import { BlocksModule } from './module/blocks/blocks.module';
-import { ChatModule } from './module/chat/chat.module';
 
 @Module({
   imports: [
-    PrismaModule,
-    AuthModule,
-    UserModule,
-    ProjectModule,
-    EventEmitterModule.forRoot(),
-    SubprojectModule,
-    FindingModule,
-    JwtModule,
-    CacheModule.register({
+    CacheModule.register<RedisClientOptions>({
       store: redisStore,
-      socket: {
-        host: 'localhost',
-        port: 6379,
-      },
-
       isGlobal: true,
+      url: 'redis://localhost:6379'
     }),
-
-    MinioClientModule,
-    FileUploadModule,
-    EventsModule,
-    RepositoryModule,
-
-    BlocksModule,
-
+    ServeStaticModule.forRoot({
+      rootPath: process.env.STATIC_PATH,
+      serveRoot: '/img',
+      serveStaticOptions: {},
+      exclude: ['/api/*'],
+    }),
+    EventEmitterModule.forRoot(),
+    ConfigModule.forRoot({ cache: true, isGlobal: true }),
+    PrismaModule,
+    UserModule,
+    FindingModule,
+    ProjectModule,
+    SubprojectModule,
     ChatModule,
+    EventModule,
+    AuthModule,
+    FileModule,
+    OutputModule,
+    VCacheModule,
   ],
-  controllers: [AuthController],
-  providers: [AuthService],
 })
-export class AppModule {}
+export class AppModule { }

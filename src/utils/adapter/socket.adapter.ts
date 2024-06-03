@@ -1,5 +1,6 @@
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import { SocketAuthMiddleware } from 'src/module/auth/ws-jwt/ws-jwt.middleware';
+import { SocketAuthMiddleware } from 'src/middleware/socket-auth.middleware';
+
 
 export class SocketAdapter extends IoAdapter {
   createIOServer(port: number, options?: any) {
