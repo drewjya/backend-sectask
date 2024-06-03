@@ -1,9 +1,10 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { ProjectRole } from '@prisma/client';
+import { File, FileType, ProjectRole } from '@prisma/client';
 import { LogQuery } from 'src/common/query/log.query';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { OutputService } from 'src/output/output.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { getFileByType } from 'src/types/file';
 import { ApiException } from 'src/utils/exception/api.exception';
 import { noaccess, notfound } from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
@@ -64,8 +65,13 @@ export class ProjectService {
             profilePicture: true,
           },
         },
-        attachments: true,
-        reports: true,
+        projectFile: {
+          select: {
+            file: true,
+            type: true
+          }
+        },
+
         recentActivities: {
           select: {
             title: true,
@@ -122,8 +128,17 @@ export class ProjectService {
         name: member.member.name,
       };
     });
+    const files = getFileByType(project.projectFile)
+
+    let reports: File[] = files.get(FileType.REPORT) ?? []
+    let attachments: File[] = files.get(FileType.ATTACHMENT) ?? []
+
+    delete project.projectFile
+
     return {
       ...project,
+      attachments: attachments ?? [],
+      reports: reports ?? [],
       members,
     };
   }
@@ -540,49 +555,35 @@ export class ProjectService {
           id: param.userId
         }
       })
-      let query: {
+      const file = await tx.projectFile.create({
         data: {
-          name: string,
-          originalName: string,
-          contentType: string,
-          imagePath: string,
-          projectReports?: any,
-          projectAttachments?: any
-        }
-      } = {
-        data: {
-          name: param.file.filename,
-          originalName: param.originalName,
-          contentType: param.file.mimetype,
-          imagePath: param.file.path,
-        },
-      };
-      if (param.type === "attachment") {
-        query.data = {
-          ...query.data,
-          projectAttachments: {
+          type: param.type === "attachment" ? FileType.ATTACHMENT : FileType.REPORT,
+          file: {
+            create: {
+              name: param.file.filename,
+              originalName: param.originalName,
+              contentType: param.file.mimetype,
+              imagePath: param.file.path,
+            }
+          },
+          project: {
             connect: {
               id: param.projectId,
-            },
-          }
-        }
-      } else {
-        query.data = {
-          ...query.data,
-          projectReports: {
-            connect: {
-              id: param.projectId
             }
           }
         }
-      }
-      const attachment = await tx.file.create(query);
+        ,
+        select: {
+          file: true,
+        }
+      });
       const log = await tx.projectLog.create(LogQuery.addFileProject({
-        fileName: attachment.originalName ?? attachment.name,
+        fileName: file.file.originalName ?? file.file.name,
         projectId: param.projectId,
         type: param.type === 'attachment' ? 'Attachment' : 'Report',
         userName: user.name
       }))
+      const attachment = file.file
       return { attachment, log }
     })
 

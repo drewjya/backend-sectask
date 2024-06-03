@@ -574,7 +574,8 @@ export class FindingService {
     });
   }
 
-  async uploadImageForTiptap(userId: number, file: Express.Multer.File, originalName?: string) {
+  async uploadImageForTiptap(param: { findingId: number, userId: number, file: Express.Multer.File, originalName?: string }) {
+    const { file, findingId, userId, originalName } = param
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
@@ -583,18 +584,37 @@ export class FindingService {
     if (!user) {
       throw unauthorized
     }
-    const uploadFile = await this.prisma.file.create({
+    const uploadFile = await this.prisma.findingFile.create({
       data: {
-        contentType: file.mimetype,
-        imagePath: file.path,
-        name: file.filename,
-        originalName: originalName
+        finding: {
+          connect: {
+            id: findingId,
+          }
+
+        },
+        file: {
+          create: {
+            contentType: file.mimetype,
+            imagePath: file.path,
+            name: file.filename,
+            originalName: originalName,
+          }
+        }
+
+      },
+      include: {
+        file: true
       }
     })
-    return uploadFile;
+    return uploadFile.file;
   }
 
-  async deleteImageTiptap(userId: number, name: string) {
+  async deleteImageTiptap(param: {
+    userId: number, name: string,
+    findingId?: number,
+    fileId?: number
+  }) {
+    const { name, userId, fileId, findingId } = param
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
@@ -603,21 +623,26 @@ export class FindingService {
     if (!user) {
       throw unauthorized
     }
-    const uploadFile = await this.prisma.file.findFirst({
-      where: {
-        name: name
+    let newFIleId = fileId
+    if (!newFIleId) {
+      const uploadFile = await this.prisma.file.findFirst({
+        where: {
+          name: name
+        }
+      })
+      if (!uploadFile) {
+        throw notfound
       }
-    })
-    if (!uploadFile) {
-      throw notfound
+      newFIleId = uploadFile.id
     }
     const deleteFile = await this.prisma.file.delete({
       where: {
-        id: uploadFile.id
-      }
+        id: fileId
+      },
+
     })
     unlinkFile(deleteFile.imagePath);
-    return uploadFile;
+    return;
   }
 
   async getAllChatRoom(param: {

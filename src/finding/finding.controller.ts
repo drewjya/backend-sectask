@@ -208,30 +208,44 @@ export class FindingController {
       userId: userId,
       cvss: param,
     });
-    
+
     return cvss
   }
 
   @UseGuards(AccessTokenGuard)
-  @UseInterceptors(uploadConfig())
-  @Post('upload')
-  async uploadImage(
-    @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
+  @Post('upload/delete/:name')
+  async deleteFile(
     @Req() req: Request,
+    @Param("name") name: string,
+    @Query('id') imageId: string,
+    @Query('findingId') findingId: string
   ) {
     const userId = extractUserId(req)
-    const originalName = req.body.originalName;
-    return this.findingService.uploadImageForTiptap(userId, file, originalName)
+
+    return this.findingService.deleteImageTiptap({
+      userId, name,
+      fileId: +imageId,
+      findingId: +findingId
+    })
   }
 
   @UseGuards(AccessTokenGuard)
-  @Post('upload/:name')
-  async deleteFile(
+  @UseInterceptors(uploadConfig())
+  @Post('upload/:findingId')
+  async uploadImage(
+    @UploadedFile(parseFile({ isRequired: true })) file: Express.Multer.File,
     @Req() req: Request,
-    @Param("name") name: string
+    @Param('findingId') findingId: string
   ) {
     const userId = extractUserId(req)
-    return this.findingService.deleteImageTiptap(userId, name)
+    const originalName = req.body.originalName;
+
+    return this.findingService.uploadImageForTiptap({
+      userId: userId,
+      file,
+      originalName,
+      findingId: +findingId
+    })
   }
 
   @UseGuards(AccessTokenGuard)

@@ -218,7 +218,7 @@ export class ProjectQuery {
     if (subprojectData.project.archived) {
       throw new ApiException({
         status: HttpStatus.BAD_REQUEST,
-        data: 'subproject_is_archived',
+        data: 'archived',
       });
     }
     const member = subprojectData.project.members.find(

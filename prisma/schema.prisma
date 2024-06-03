@@ -18,7 +18,7 @@ model User {
   name             String
   email            String             @unique
   password         String
-  profilePictureId Int?
+  profilePictureId Int?               @unique
   profilePicture   File?              @relation(fields: [profilePictureId], references: [id])
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
@@ -42,13 +42,38 @@ model File {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   deletedAt    DateTime?
-  users        User[]
 
-  projectAttachments    Project[]    @relation("ProjectAttachments")
-  projectReports        Project[]    @relation("ProjectReports")
-  subProjectAttachments SubProject[] @relation("SubProjectAttachments")
-  subProjectReports     SubProject[] @relation("SubProjectReports")
-  project               Project[]
+  users          User?
+  project        Project?
+  projectFile    ProjectFile?
+  subprojectFile SubprojectFile?
+  findingFile    FindingFile?
+}
+
+model ProjectFile {
+  id        Int      @id @default(autoincrement())
+  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  fileId    Int      @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId Int
+  type      FileType
+}
+
+model SubprojectFile {
+  id           Int        @id @default(autoincrement())
+  file         File       @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  fileId       Int        @unique
+  subproject   SubProject @relation(fields: [subprojectId], references: [id], onDelete: Cascade)
+  subprojectId Int
+  type         FileType
+}
+
+model FindingFile {
+  id        Int     @id @default(autoincrement())
+  file      File    @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  fileId    Int     @unique
+  finding   Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  findingId Int
 }
 
 model ProjectLog {
@@ -72,24 +97,25 @@ model SubProjectLog {
 }
 
 model Project {
-  id               Int             @id @default(autoincrement())
-  name             String
-  archived         Boolean
-  startDate        DateTime
-  owner            User            @relation(fields: [ownerId], references: [id])
-  endDate          DateTime
-  projectPictureId Int?
-  projectPicture   File?           @relation(fields: [projectPictureId], references: [id])
-  members          ProjectMember[]
-  attachments      File[]          @relation("ProjectAttachments")
-  reports          File[]          @relation("ProjectReports")
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  deletedAt        DateTime?
+  id       Int     @id @default(autoincrement())
+  name     String
+  archived Boolean
+  ownerId  Int
+  owner    User    @relation(fields: [ownerId], references: [id])
 
+  startDate        DateTime
+  endDate          DateTime
+  projectPictureId Int?     @unique
+  projectPicture   File?    @relation(fields: [projectPictureId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  members          ProjectMember[]
   subProjects      SubProject[]
   recentActivities ProjectLog[]
-  ownerId          Int
+  projectFile      ProjectFile[]
 }
 
 model ProjectMember {
@@ -117,18 +143,17 @@ model SubProject {
   deletedAt        DateTime?
   members          SubprojectMember[]
   findings         Finding[]
-  attachments      File[]             @relation("SubProjectAttachments")
-  reports          File[]             @relation("SubProjectReports")
   recentActivities SubProjectLog[]
 
-  project   Project @relation(fields: [projectId], references: [id])
-  projectId Int
+  project        Project          @relation(fields: [projectId], references: [id])
+  projectId      Int
+  subprojectFile SubprojectFile[]
 }
 
 model SubprojectMember {
   id Int @id @default(autoincrement())
 
-  subproject      SubProject    @relation(fields: [subprojectId], references: [id])
+  subproject      SubProject    @relation(fields: [subprojectId], references: [id], onDelete: Cascade)
   subprojectId    Int
   user            User          @relation(fields: [userId], references: [id])
   userId          Int
@@ -161,7 +186,7 @@ model Finding {
   status     String?
   releases   String?
 
-  subProject   SubProject @relation(fields: [subProjectId], references: [id])
+  subProject   SubProject @relation(fields: [subProjectId], references: [id], onDelete: Cascade)
   subProjectId Int
   userId       Int
 
@@ -173,6 +198,7 @@ model Finding {
   testerFinding   TesterFinding[]
   threatAndRiskId String
   descriptionId   String
+  FindingFile     FindingFile[]
 }
 
 model RetestHistory {
@@ -245,4 +271,9 @@ enum ProjectRole {
   PM
   DEVELOPER
   TECHNICAL_WRITER
+}
+
+enum FileType {
+  ATTACHMENT
+  REPORT
 }

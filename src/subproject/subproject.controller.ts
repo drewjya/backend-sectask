@@ -49,8 +49,6 @@ export class SubprojectController {
   @UseGuards(AccessTokenGuard)
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: Request) {
-    console.log("Sini Kah");
-
     const userId = extractUserId(req);
 
     return this.subprojectService.findDetail({
@@ -63,6 +61,8 @@ export class SubprojectController {
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req: Request) {
     const userId = extractUserId(req);
+    console.log("Mashok");
+
     return this.subprojectService.deleteSubproject({
       subprojectId: +id,
       userId: userId,

@@ -158,6 +158,17 @@ export class LogQuery {
       }
     }
   }
+  static deleteSubproject(param: {
+    userName: string,
+    subprojectName: string
+  }) {
+    return {
+      data: {
+        title: `Subproject Deleted`,
+        description: `<p><strong>${param.userName}</strong> deleted ${param.subprojectName}.</p>`,
+      },
+    }
+  }
 
   static createSubroject(param: {
     userName: string,
@@ -169,6 +180,9 @@ export class LogQuery {
       },
     }
   }
+
+
+  
 
   static editNameSubProject(
     param: {

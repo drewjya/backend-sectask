@@ -1,9 +1,10 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { File, ProjectRole } from '@prisma/client';
+import { File, FileType, ProjectRole } from '@prisma/client';
 import { LogQuery } from 'src/common/query/log.query';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { OutputService } from 'src/output/output.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { getFileByType } from 'src/types/file';
 import { ApiException } from 'src/utils/exception/api.exception';
 import { noaccess, notfound } from 'src/utils/exception/common.exception';
 import { unlinkFile } from 'src/utils/pipe/file.pipe';
@@ -51,7 +52,7 @@ export class SubprojectService {
 
       if (check) {
         throw new ApiException({
-          data: 'Member consultant in subproject',
+          data: 'exist',
           status: HttpStatus.BAD_REQUEST,
         });
       }
@@ -75,22 +76,16 @@ export class SubprojectService {
         },
       });
 
-      
+
     } else {
       if (!projectMembers.subprojectMember) {
-        throw new ApiException({
-          data: 'Member not consultant in subproject',
-          status: HttpStatus.BAD_REQUEST,
-        });
+        throw notfound;
       }
       const check = projectMembers.subprojectMember.find(
         (member) => member.subprojectId === param.subprojectId,
       );
       if (!check) {
-        throw new ApiException({
-          data: 'Member not consultant in subproject',
-          status: HttpStatus.BAD_REQUEST,
-        });
+        throw notfound;
       }
       await this.prisma.subprojectMember.delete({
         where: {
@@ -113,21 +108,21 @@ export class SubprojectService {
       });
     }
     let query = LogQuery.promoteMemberSubproject({
-      memberName:projectMembers.member.name,
-      subprojectId:param.subprojectId
+      memberName: projectMembers.member.name,
+      subprojectId: param.subprojectId
     })
     if (!param.add) {
       query = LogQuery.demoteMemberSubproject({
-        memberName:projectMembers.member.name,
+        memberName: projectMembers.member.name,
         subprojectId: param.subprojectId
       })
     }
-    const log = await this.prisma.subProjectLog.create(query)    
-    let type:'promote'|'demote' = 'promote'
+    const log = await this.prisma.subProjectLog.create(query)
+    let type: 'promote' | 'demote' = 'promote'
     if (!param.add) {
       type = 'demote'
     }
-    
+
     this.output.subprojectLog(param.subprojectId, log)
     this.output.subprojectMember(type, [subproject.id], ProjectRole.VIEWER, projectMembers.member)
     return;
@@ -188,10 +183,21 @@ export class SubprojectService {
             },
           },
         },
-        reports: true,
-        attachments: true,
+        subprojectFile: {
+          select: {
+            type: true,
+            file: true,
+          }
+        }
       },
     });
+    const files = getFileByType(subproject.subprojectFile)
+
+    let reports: File[] = files.get(FileType.REPORT) ?? []
+    let attachments: File[] = files.get(FileType.ATTACHMENT) ?? []
+
+    delete subproject.subprojectFile
+
 
     const consultants = subproject.members.map((member) => {
       return member.user.id;
@@ -208,6 +214,8 @@ export class SubprojectService {
     return {
       ...subproject,
       subprojectMember,
+      attachments: attachments ?? [],
+      reports: reports ?? []
     };
   }
 
@@ -224,7 +232,7 @@ export class SubprojectService {
       role: [ProjectRole.PM],
     });
     const user = await this.prisma.user.findFirst({
-      where:{
+      where: {
         id: param.userId,
       }
     })
@@ -247,7 +255,7 @@ export class SubprojectService {
           select: {
             id: true,
             name: true,
-            owner:true,
+            owner: true,
             members: {
               select: {
                 userId: true,
@@ -282,7 +290,7 @@ export class SubprojectService {
       role: [ProjectRole.PM],
     });
     const user = await this.prisma.user.findFirst({
-      where:{
+      where: {
         id: param.userId,
       }
     })
@@ -295,7 +303,7 @@ export class SubprojectService {
         startDate: param.startDate,
         endDate: param.endDate,
       },
-      include:{
+      include: {
         project: {
           select: {
             id: true,
@@ -312,18 +320,18 @@ export class SubprojectService {
         },
       }
     });
-    let query:{
+    let query: {
       data: {
-          title: string;
-          description: string;
-          subproject: {
-              connect: {
-                  id: number;
-              };
+        title: string;
+        description: string;
+        subproject: {
+          connect: {
+            id: number;
           };
+        };
       };
-  }
-  ;
+    }
+      ;
     if (oldSubproject.name !== subproject.name) {
       query = LogQuery.editNameSubProject({
         newName: subproject.name,
@@ -331,7 +339,7 @@ export class SubprojectService {
         subprojectId: subproject.id,
         userName: user.name,
       })
-    }else{
+    } else {
       query = LogQuery.editSubprojectPeriod({
         userName: user.name,
         endDate: subproject.endDate,
@@ -340,11 +348,11 @@ export class SubprojectService {
       })
     }
     const log = await this.prisma.subProjectLog.create(query)
-    
-    
+
+
     this.output.subprojectLog(subproject.id, log)
     this.output.subprojectHeader(subproject)
-    this.output.subprojectSidebar('edit', subproject, subproject.project.members.map((e)=>e.userId))
+    this.output.subprojectSidebar('edit', subproject, subproject.project.members.map((e) => e.userId))
     return;
   }
 
@@ -360,20 +368,20 @@ export class SubprojectService {
       add: true,
     });
     return;
-    
+
   }
   async demoteToViewer(param: {
     subprojectId: number;
     userId: number;
     memberId: number;
   }) {
-     await this.editSubprojectMembers({
+    await this.editSubprojectMembers({
       subprojectId: param.subprojectId,
       userId: param.userId,
       memberId: param.memberId,
       add: false,
     });
-    
+
     return;
   }
 
@@ -388,11 +396,50 @@ export class SubprojectService {
         id: param.subprojectId,
       },
     });
-    await this.projectQuery.addSubProjectRecentActivities({
-      subprojectId: param.subprojectId,
-      title: `Subproject Deleted`,
-      description: `Subproject has been deleted by [${param.userId}]`,
-    });
+    const files = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findFirst({
+        where: {
+          id: param.userId
+        }
+      })
+
+      const data = await tx.file.findMany({
+        where: {
+
+          subprojectFile: {
+            subprojectId: subproject.id
+          }
+
+
+        },
+      })
+      await tx.subProjectLog.deleteMany({
+        where: {
+          subproject: {
+            every: {
+              id: subproject.id
+            }
+          }
+        }
+      })
+      await tx.file.deleteMany({
+        where: {
+          subprojectFile: {
+            subprojectId: subproject.id
+          }
+        }
+      })
+
+      await tx.projectLog.create(LogQuery.deleteSubproject({
+        userName: user.name,
+        subprojectName: subproject.name
+      }))
+      return data
+    })
+    files.forEach((e) => {
+      unlinkFile(e.imagePath)
+    })
+
     return subproject;
   }
 
@@ -409,50 +456,34 @@ export class SubprojectService {
       userId: param.userId,
       role: [param.acceptRole],
     });
-    
-  
-  
+    const subpFile = await this.prisma.subprojectFile.create({
+      data: {
+        type: param.type === 'attachment' ? FileType.ATTACHMENT : FileType.REPORT,
+        file: {
+          create: {
 
-    let query: {
-      data: {
-        name: string,
-        originalName: string,
-        contentType: string,
-        imagePath: string,
-        subProjectReports?: any,
-        subProjectAttachments?: any
-      }
-    } = {
-      data: {
-        name: param.file.filename,
-        originalName: param.originalName,
-        contentType: param.file.mimetype,
-        imagePath: param.file.path,
-      },
-    };
-    if (param.type === "attachment") {
-      query.data = {
-        ...query.data,
-        subProjectAttachments: {
-          connect: {
-            id: param.subprojectId,
+            name: param.file.filename,
+            originalName: param.originalName,
+            contentType: param.file.mimetype,
+            imagePath: param.file.path,
+
           },
-        }
-      }
-    } else {
-      query.data = {
-        ...query.data,
-        subProjectReports: {
+
+        },
+        subproject: {
           connect: {
             id: param.subprojectId
           }
         }
+      },
+      include: {
+        file: true,
       }
-    }
-    const file  = await this.prisma.file.create(query)
+    })
+    const file = subpFile.file
     const log = await this.prisma.subProjectLog.create(LogQuery.addFileSubProject({
-      type: param.type==="attachment"?"Attachment":"Report",
-      fileName: file.originalName??file.name,
+      type: param.type === "attachment" ? "Attachment" : "Report",
+      fileName: file.originalName ?? file.name,
       subprojectId: param.subprojectId,
       userName: user.project.owner.name
     }))
@@ -466,7 +497,7 @@ export class SubprojectService {
     fileId: number;
     userId: number;
     acceptRole: ProjectRole;
-    type: 'Attachment'|'Report'
+    type: 'Attachment' | 'Report'
   }) {
     const user = await this.projectQuery.checkIfSubprojectActive({
       subproject: param.subprojectId,
@@ -476,7 +507,7 @@ export class SubprojectService {
 
     const file = await this.prisma.file.findFirst({
       where: {
-        id: param.fileId,
+        id: param.fileId
       },
     });
     if (!file) {
@@ -489,7 +520,7 @@ export class SubprojectService {
     });
     const log = await this.prisma.subProjectLog.create(LogQuery.addFileSubProject({
       type: param.type,
-      fileName: file.originalName??file.name,
+      fileName: file.originalName ?? file.name,
       subprojectId: param.subprojectId,
       userName: user.project.owner.name
     }))
