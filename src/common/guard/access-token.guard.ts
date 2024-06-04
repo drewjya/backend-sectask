@@ -13,10 +13,12 @@ export class AccessTokenGuard extends AuthGuard('jwt') {
     try {
       const load = await super.canActivate(context);
 
-
       if (load) {
         const request = context.switchToHttp().getRequest<Request>();
+
         const verify = request.user['sessionId']
+        console.log(verify);
+
         const userId = request.user['sub']
         await this.cache.verifySessionUser(+userId, verify)
         return true;

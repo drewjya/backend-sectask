@@ -40,6 +40,8 @@ export class FindingController {
     @Req() req: Request,
   ) {
     const userId = extractUserId(req);
+    console.log("CREATE ASHS");
+
 
     await this.findingService.create({
       subprojectId: +subprojectId,
