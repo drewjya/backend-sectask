@@ -194,6 +194,24 @@ export class LogQuery {
     }
   }
 
+  static createFinding(param: {
+    userName: string,
+    subprojectId: number,
+
+  }) {
+    return {
+      data: {
+        title: `Finding Created`,
+        description: `<p><strong>${param.userName}</strong> created new finding.</p>`,
+        subproject: {
+          connect: {
+            id: param.subprojectId
+          }
+        }
+      },
+    }
+  }
+
   static createSubroject(param: {
     userName: string,
   }) {

@@ -22,11 +22,12 @@ export type SubprojectFindingDto = {
   finding: {
     findingId: number;
     name: string;
+    deletedAt?: Date;
     risk?: string;
     status?: string;
     owner: OwnerFinding;
   };
-  type: string;
+  type: 'add' | 'edit' | 'remove';
 };
 
 

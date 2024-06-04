@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ChatRoom, File, Prisma, Project, ProjectLog, ProjectRole, SubProject, SubProjectLog, User } from '@prisma/client';
-import { ProjectSubprojectEvent, UserWithFile } from 'src/subproject/entity/subproject.entity';
+import { ChatRoom, File, Finding, Prisma, Project, ProjectLog, ProjectRole, SubProject, SubProjectLog, User } from '@prisma/client';
+import { ProjectSubprojectEvent, SubprojectFindingDto, UserWithFile } from 'src/subproject/entity/subproject.entity';
 import { EventFile } from 'src/types/file';
-import { EventLogData, ProjectEventHeader, SubprojectEventHeader } from 'src/types/header';
+import { EventLogData, FindingEventHeader, ProjectEventHeader, SubprojectEventHeader } from 'src/types/header';
 import { EventMember, EventSubprojectMember } from 'src/types/member';
-import { EventSidebarProject, EventSidebarSubproject } from 'src/types/sidebar';
+import { EventSidebarFinding, EventSidebarProject, EventSidebarSubproject } from 'src/types/sidebar';
 import { FINDING_ON_MESSAGE, PROJECT_ON_MESSAGE, ROOM_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
 
 export interface ProjectWithPicture extends Project {
@@ -32,6 +32,15 @@ export interface ChatItem {
         profilePicture?: File
     };
     replyChat?: ChatItem;
+}
+
+export interface FindingWithCreatedBy extends Finding {
+    createdBy: {
+        id: number;
+        name: string;
+        profilePicture?: File
+    },
+
 }
 
 @Injectable()
@@ -116,7 +125,7 @@ export class OutputService {
         }
     }
 
-    projectSubproject(type: 'add' | 'edit', subproject: SubProject) {
+    projectSubproject(type: 'add' | 'edit' | 'remove', subproject: SubProject) {
         const newEntity: ProjectSubprojectEvent = {
             type: type,
             projectId: subproject.projectId,
@@ -198,11 +207,54 @@ export class OutputService {
         this.emitter.emit(SUBPROJECT_ON_MESSAGE.LOG, val);
     }
 
-    subprojectFinding() { }
+    subprojectFinding(type: 'add' | 'edit' | 'remove', finding: FindingWithCreatedBy) {
+        const newFinding: SubprojectFindingDto = {
+            finding: {
+                findingId: finding.id,
+                name: finding.name,
+                deletedAt: finding.deletedAt,
+                owner: {
+                    id: finding.createdBy.id,
+                    name: finding.createdBy.name,
+                    profilePicture: finding.createdBy.profilePicture,
+                },
 
-    findingSidebar() { }
+            },
+            subprojectId: finding.subProjectId,
+            type: type
+        }
+        this.emitter.emit(SUBPROJECT_ON_MESSAGE.FINDING, newFinding)
+    }
 
-    findingHeader() { }
+    findingSidebar(param: { type: "add" | 'remove' | 'edit', userId: number[], finding: Finding, projectId: number, subprojectId: number }) {
+        const {
+            finding,
+            projectId,
+            subprojectId,
+            type,
+            userId
+        } = param
+        const newSidebarItem: EventSidebarFinding = {
+            finding: {
+                findingId: finding.id,
+                name: finding.name,
+            },
+            userId: userId,
+            subprojectId: subprojectId,
+            projectId: projectId,
+            type: type,
+        };
+        this.emitter.emit(FINDING_ON_MESSAGE.SIDEBAR, newSidebarItem);
+    }
+
+    findingHeader(id: number, name: string) {
+        const findingHeader: FindingEventHeader = {
+            findingId: id,
+            name: name,
+        };
+
+        this.emitter.emit(FINDING_ON_MESSAGE.HEADER, findingHeader);
+    }
 
     findingCvss(cvss: {
         id: number;
@@ -230,7 +282,7 @@ export class OutputService {
         this.emitter.emit(FINDING_ON_MESSAGE.FINDINGPROP, param)
     }
 
-    
+
 
     findingRetest(param: {
         retest: {
@@ -259,6 +311,20 @@ export class OutputService {
             chat: chat
         }
         this.emitter.emit(ROOM_ON_MESSAGE.SEND, val)
+    }
+
+    subprojectDeleted(subprojectId: number) {
+        console.log(subprojectId);
+
+        this.emitter.emit(SUBPROJECT_ON_MESSAGE.DELETE, {
+            subprojectId: subprojectId
+        })
+    }
+    findingDeleted(findingId: number, status: 'deleted' | 'approved') {
+        this.emitter.emit(FINDING_ON_MESSAGE.DELETE, {
+            findingId: findingId,
+            status: status
+        })
     }
 
 }

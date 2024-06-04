@@ -34,6 +34,7 @@ export const SUBPROJECT_EVENT = {
   HEADER: 'subprojectHeader',
   LOG: 'subprojectLog',
   FINDING: 'subprojectFinding',
+  DELETE:'subprojectDeleted',
 };
 
 export const SUBPROJECT_MESSAGE = {
@@ -45,6 +46,7 @@ export const SUBPROJECT_ON_MESSAGE = {
   HEADER: 'subproject.header',
   MEMBER: 'subproject.member',
   FINDING: 'subproject.finding',
+  DELETE:'subproject.delete',
   REPORT: 'subproject.report',
   ATTACHMENT: 'subproject.attachment',
   SIDEBAR: 'subproject.sidebar',
@@ -60,6 +62,7 @@ export const FINDING_EVENT = {
   TESTLIST:'findingTestList',
   CVSS: 'findingCVSS',
   ROOM: 'findingRoomChat',
+  DELETE:'findingDeleted',
 };
 
 export const FINDING_MESSAGE = {
@@ -72,6 +75,7 @@ export const FINDING_ON_MESSAGE = {
   SIDEBAR: 'finding.sidebar',
   HEADER: 'finding.header',
   MODIFY: 'finding.tester',
+  DELETE:'finding.delete',
   FINDINGPROP: 'finding.property',
   RETEST: 'finding.retest',
   CVSS: 'finding.cvss',

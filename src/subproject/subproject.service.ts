@@ -165,6 +165,8 @@ export class SubprojectService {
           select: {
             id: true,
             name: true,
+            startDate: true,
+            endDate: true,
             members: {
               include: {
                 member: true,
@@ -176,6 +178,8 @@ export class SubprojectService {
           select: {
             id: true,
             name: true,
+            deletedAt: true,
+            
             createdBy: {
               include: {
                 profilePicture: true,
@@ -415,7 +419,11 @@ export class SubprojectService {
 
         },
         include: {
-
+          project: {
+            select: {
+              members: true,
+            }
+          },
           findings: {
             select: {
               descriptionId: true,
@@ -469,6 +477,10 @@ export class SubprojectService {
       unlinkFile(e.imagePath)
     })
 
+    const users = subproject.project.members.map((e) => e.userId)
+    this.output.subprojectSidebar('remove', subproject, users)
+    this.output.projectSubproject('remove', subproject)
+    this.output.subprojectDeleted(subproject.id)
     return subproject;
   }
 

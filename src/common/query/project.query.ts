@@ -194,6 +194,11 @@ export class ProjectQuery {
       include: {
         members: {
           select: {
+            user:{
+              select: {
+                name: true
+              }
+            },
             userId: true,
           },
         },

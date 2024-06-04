@@ -320,7 +320,6 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
     findingId: number;
   }) {
-    console.log("retest");
 
     this.server.in(getFindingRoom(payload.findingId)).emit(FINDING_EVENT.RETEST, payload.retest)
     this.server.in(getFindingRoom(payload.findingId)).emit(FINDING_EVENT.TESTLIST, payload.retest)
@@ -360,4 +359,17 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }) {
     this.server.in(getChatRoom(payload.roomId)).emit(ROOM_EVENT.SEND, payload.chat)
   }
+
+  @OnEvent(SUBPROJECT_ON_MESSAGE.DELETE)
+  onSubprojectDeleted(payload: { subprojectId: number }) {
+    console.log("MASUK DELETE ", payload);
+
+    this.server.in(getSubProjectRoom(payload.subprojectId)).emit(SUBPROJECT_EVENT.DELETE, payload)
+  }
+
+  @OnEvent(FINDING_ON_MESSAGE.DELETE)
+  onFindingDeleted(payload: { findingId: number, status: 'deleted' | 'approved' }) {
+    this.server.in(getFindingRoom(payload.findingId)).emit(FINDING_EVENT.DELETE, payload)
+  }
 }
+

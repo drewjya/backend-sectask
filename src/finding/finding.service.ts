@@ -116,16 +116,7 @@ export class FindingService {
           select: {
             id: true,
             name: true,
-            profilePicture: {
-              select: {
-                id: true,
-                name: true,
-                originalName: true,
-                contentType: true,
-                imagePath: true,
-                createdAt: true,
-              },
-            },
+            profilePicture: true,
           },
         },
         subProject: {
@@ -146,8 +137,24 @@ export class FindingService {
       }
     });
 
-    const description = newFind.description
-    const threat = newFind.threatAndRisk
+    const description = newFind.description.id
+    const threat = newFind.threatAndRisk.id
+    const log = await this.prisma.subProjectLog.create(LogQuery.createFinding({
+      subprojectId: subproject.id,
+      userName: member.user.name,
+    }))
+    const members = newFind.subProject.project.members.map((member) => member.userId)
+    this.output.subprojectLog(param.subprojectId, log)
+    this.output.findingSidebar({
+      type: 'add',
+      finding: newFind,
+      projectId: newFind.subProject.project.id,
+      subprojectId: newFind.subProject.id,
+      userId: members,
+    })
+    this.output.subprojectSidebar('add', subproject, members)
+    this.output.subprojectFinding('add', newFind)
+
     return {
       ...newFind,
       description,
@@ -245,6 +252,8 @@ export class FindingService {
           select: {
             name: true,
             id: true,
+            startDate: true,
+            endDate: true,
             members: {
               select: {
                 userId: true,
@@ -379,7 +388,9 @@ export class FindingService {
       },
       include: {
         createdBy: {
-          include: {
+          select: {
+            id: true,
+            name: true,
             profilePicture: true,
           },
         },
@@ -404,6 +415,16 @@ export class FindingService {
       },
     });
     this.notifyEdit({ userId: param.userId, findingId: param.findingId });
+    this.output.subprojectFinding('edit', newFInding)
+    const member = newFInding.subProject.project.members.map((member) => member.userId)
+    this.output.findingSidebar({
+      type: 'edit',
+      userId: member,
+      subprojectId: newFInding.subProjectId,
+      projectId: newFInding.subProject.project.id,
+      finding: newFInding,
+    })
+    this.output.findingHeader(newFInding.id, newFInding.name)
     return newFInding;
   }
 
@@ -608,6 +629,22 @@ export class FindingService {
           where: {
             id: param.findingId,
           },
+          include: {
+            subProject: {
+              include: {
+                project: {
+                  include: {
+                    members: true,
+                  }
+                }
+              }
+            },
+            createdBy: {
+              include: {
+                profilePicture: true,
+              }
+            }
+          }
         })
         await tx.document.deleteMany({
           where: {
@@ -633,6 +670,16 @@ export class FindingService {
         }
 
       })
+      this.output.subprojectFinding('remove', data.newF)
+      this.output.findingSidebar({
+        type: 'remove',
+        userId: data.newF.subProject.project.members.map(e => e.userId),
+        finding: data.newF,
+        projectId: data.newF.subProject.projectId,
+        subprojectId: data.newF.subProjectId
+      })
+      this.output.subprojectLog(data.newF.subProjectId, data.log)
+      this.output.findingDeleted(param.findingId, 'approved')
       return data.newF
     }
     await this.authorizedEditor({
@@ -653,9 +700,17 @@ export class FindingService {
       },
       data: {
         deletedAt: new Date(),
+      },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            profilePicture: true
+          }
+        }
       }
     });
-    console.log(data);
 
     const log = await this.prisma.subProjectLog.create(LogQuery.deleteFinding({
       userName: user.name,
@@ -663,6 +718,9 @@ export class FindingService {
       subprojectId: finding.subProject.id,
       approved: false,
     }))
+    this.output.subprojectFinding('edit', data)
+    this.output.subprojectLog(finding.subProject.id, log)
+    this.output.findingDeleted(param.findingId, 'deleted')
   }
 
   async uploadImageForTiptap(param: { findingId: number, userId: number, file: Express.Multer.File, originalName?: string }) {
