@@ -18,7 +18,7 @@ import { SubprojectFindingDto } from 'src/subproject/entity/subproject.entity';
 import { FindingEventHeader } from 'src/types/header';
 import { EventSidebarFinding } from 'src/types/sidebar';
 import { FINDING_ON_MESSAGE, SUBPROJECT_ON_MESSAGE } from 'src/utils/event';
-import { extractUserId } from 'src/utils/extract/userId';
+import { extractSessionId, extractUserId } from 'src/utils/extract/userId';
 import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
 import {
   CreateTestingDto,
@@ -28,6 +28,7 @@ import {
 
   NewChatDto,
   NewChatRoomDto,
+  SaveFindingVersion,
 } from './dto/create-finding.dto';
 import { FindingService } from './finding.service';
 
@@ -45,6 +46,9 @@ export class FindingController {
     @Req() req: Request,
   ) {
     const userId = extractUserId(req);
+    const sessionId = extractSessionId(req)
+    console.log(sessionId);
+
     const finding = await this.findingService.create({
       subprojectId: +subprojectId,
       userId: userId,
@@ -245,6 +249,37 @@ export class FindingController {
       file,
       originalName,
       findingId: +findingId
+    })
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Get('versions/:findingId')
+  async versionsGetter(
+    @Query('type') type: 'DESCRIPTION' | 'THREAT',
+    @Param('findingId') findingId: string
+  ) {
+    return this.findingService.getVersion({
+      findingId: +findingId,
+      type: type,
+    })
+  }
+
+  @UseGuards(AccessTokenGuard)
+  @Post('versions/:findingId')
+  async versionAdd(
+    @Req() req: Request,
+    @Query('type') type: 'DESCRIPTION' | 'THREAT',
+    @Param('findingId') findingId: string,
+    @Body() body: SaveFindingVersion
+
+  ) {
+    const userId = extractUserId(req)
+    return this.findingService.saveFindingVersion({
+      findingId: +findingId,
+      type: type,
+      content: body.content,
+      basedOn: body.basedOnId,
+      userId: userId
     })
   }
 

@@ -161,11 +161,35 @@ export class LogQuery {
   static deleteSubproject(param: {
     userName: string,
     subprojectName: string
+    projectId: number
   }) {
     return {
       data: {
         title: `Subproject Deleted`,
         description: `<p><strong>${param.userName}</strong> deleted ${param.subprojectName}.</p>`,
+        project: {
+          connect: {
+            id: param.projectId
+          }
+        }
+      },
+    }
+  }
+  static deleteFinding(param: {
+    userName: string,
+    subprojectName: string,
+    subprojectId: number,
+    approved: boolean
+  }) {
+    return {
+      data: {
+        title: `Finding Deleted` + `${param.approved ? ' Confirmed' : ''}`,
+        description: `<p><strong>${param.userName}</strong> ${param.approved ? 'approved' : 'deleted'} ${param.subprojectName}.</p>`,
+        subproject: {
+          connect: {
+            id: param.subprojectId
+          }
+        }
       },
     }
   }
@@ -182,7 +206,7 @@ export class LogQuery {
   }
 
 
-  
+
 
   static editNameSubProject(
     param: {

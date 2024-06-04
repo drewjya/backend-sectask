@@ -391,28 +391,63 @@ export class SubprojectService {
       userId: param.userId,
       role: [ProjectRole.PM],
     });
-    const subproject = await this.prisma.subProject.delete({
-      where: {
-        id: param.subprojectId,
-      },
-    });
-    const files = await this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.findFirst({
-        where: {
-          id: param.userId
-        }
-      })
-
+    const { data, subproject } = await this.prisma.$transaction(async (tx) => {
       const data = await tx.file.findMany({
         where: {
 
           subprojectFile: {
-            subprojectId: subproject.id
+            subprojectId: param.subprojectId
           }
 
 
         },
       })
+      await tx.file.deleteMany({
+        where: {
+          subprojectFile: {
+            subprojectId: param.subprojectId
+          }
+        }
+      })
+      const subproject = await tx.subProject.delete({
+        where: {
+          id: param.subprojectId,
+
+        },
+        include: {
+
+          findings: {
+            select: {
+              descriptionId: true,
+              threatAndRiskId: true,
+            }
+          }
+        }
+      });
+      const user = await tx.user.findFirst({
+        where: {
+          id: param.userId
+        }
+      })
+      let items: string[] = []
+      const findings = subproject.findings
+      for (let index = 0; index < findings.length; index++) {
+        const element = findings[index];
+        if (element.descriptionId) {
+          items.push(element.descriptionId)
+        }
+        if (element.threatAndRiskId) {
+          items.push(element.threatAndRiskId)
+        }
+      }
+      await tx.document.deleteMany({
+        where: {
+          id: {
+            in: items
+          }
+        }
+      })
+
       await tx.subProjectLog.deleteMany({
         where: {
           subproject: {
@@ -422,21 +457,15 @@ export class SubprojectService {
           }
         }
       })
-      await tx.file.deleteMany({
-        where: {
-          subprojectFile: {
-            subprojectId: subproject.id
-          }
-        }
-      })
-
       await tx.projectLog.create(LogQuery.deleteSubproject({
         userName: user.name,
-        subprojectName: subproject.name
+        subprojectName: subproject.name,
+        projectId: subproject.projectId,
+
       }))
-      return data
+      return { data, subproject }
     })
-    files.forEach((e) => {
+    data.forEach((e) => {
       unlinkFile(e.imagePath)
     })
 

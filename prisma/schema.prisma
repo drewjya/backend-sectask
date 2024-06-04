@@ -31,6 +31,7 @@ model User {
   Project          Project[]
   ChatRoom         ChatRoom[]
   RetestHistory    RetestHistory[]
+  VersionList      VersionList[]
 }
 
 model File {
@@ -118,6 +119,24 @@ model Project {
   projectFile      ProjectFile[]
 }
 
+enum DocumentType {
+  DESCRIPTION
+  THREAT
+}
+
+model VersionList {
+  id        Int          @id @default(autoincrement())
+  finding   Finding      @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  findingId Int
+  type      DocumentType
+  content   String
+  user      User         @relation(fields: [userId], references: [id])
+  userId    Int
+
+  createdAt DateTime  @default(now())
+  basedOn   DateTime?
+}
+
 model ProjectMember {
   id               Int                @id @default(autoincrement())
   member           User               @relation(fields: [userId], references: [id])
@@ -190,8 +209,9 @@ model Finding {
   subProjectId Int
   userId       Int
 
-  description   Document @relation("FindingDescription", fields: [descriptionId], references: [id])
-  threatAndRisk Document @relation("FindindThreat", fields: [threatAndRiskId], references: [id])
+  description   Document      @relation("FindingDescription", fields: [descriptionId], references: [id])
+  threatAndRisk Document      @relation("FindindThreat", fields: [threatAndRiskId], references: [id])
+  versionList   VersionList[]
 
   retestHistories RetestHistory[]
   chatRoom        ChatRoom[]
@@ -262,8 +282,8 @@ model Chat {
   repliedBy   Chat[]   @relation("Replies")
 
   userId     Int
-  chatRoom   ChatRoom? @relation(fields: [chatRoomId], references: [id])
-  chatRoomId Int?
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  chatRoomId Int
 }
 
 enum ProjectRole {

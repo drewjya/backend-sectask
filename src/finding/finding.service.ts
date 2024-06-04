@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ProjectRole, User } from '@prisma/client';
+import { DocumentType, ProjectRole, User } from '@prisma/client';
 import { LogQuery } from 'src/common/query/log.query';
 import { ProjectQuery } from 'src/common/query/project.query';
 import { uuid } from 'src/common/uuid';
@@ -83,13 +83,13 @@ export class FindingService {
         description: {
           create: {
             data: Buffer.from(''),
-            id: uuid(),
+            id: 'description' + uuid(),
           }
         },
         threatAndRisk: {
           create: {
             data: Buffer.from(''),
-            id: uuid(),
+            id: 'threat' + uuid(),
           }
         },
         testerFinding: {
@@ -560,18 +560,109 @@ export class FindingService {
     const finding = await this.prisma.finding.findFirst({
       where: { id: param.findingId },
       select: {
-        subProjectId: true,
+        deletedAt: true,
+        name: true,
+        descriptionId: true,
+        threatAndRiskId: true,
+        FindingFile: {
+          include: {
+            file: true,
+          }
+        },
+        subProject: {
+          select: {
+            id: true,
+            project: {
+              select: {
+                ownerId: true
+              }
+            }
+          }
+        }
+
       },
     });
+    if (finding.deletedAt && finding.subProject.project.ownerId === param.userId) {
+
+      finding.FindingFile.forEach(element => {
+        unlinkFile(element.file.imagePath)
+      });
+      let document: string[] = []
+      if (finding.descriptionId) {
+        document.push(finding.descriptionId)
+      }
+      if (finding.threatAndRiskId) {
+        document.push(finding.threatAndRiskId)
+      }
+
+
+      const data = await this.prisma.$transaction(async (tx) => {
+        await tx.file.deleteMany({
+          where: {
+            findingFile: {
+              findingId: param.findingId
+            }
+          }
+        })
+        const newF = await tx.finding.delete({
+          where: {
+            id: param.findingId,
+          },
+        })
+        await tx.document.deleteMany({
+          where: {
+            id: {
+              in: document
+            }
+          }
+        })
+        const user = await tx.user.findFirst({
+          where: {
+            id: param.userId
+          }
+        })
+        const log = await tx.subProjectLog.create(LogQuery.deleteFinding({
+          userName: user.name,
+          subprojectName: finding.name,
+          subprojectId: finding.subProject.id,
+          approved: true,
+        }))
+
+        return {
+          newF, log
+        }
+
+      })
+      return data.newF
+    }
     await this.authorizedEditor({
-      subprojectId: finding.subProjectId,
+      subprojectId: finding.subProject.id,
       userId: param.userId,
     });
-    return this.prisma.finding.delete({
+    if (finding.deletedAt) {
+      throw noaccess
+    }
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: param.userId
+      }
+    })
+    const data = await this.prisma.finding.update({
       where: {
         id: param.findingId,
       },
+      data: {
+        deletedAt: new Date(),
+      }
     });
+    console.log(data);
+
+    const log = await this.prisma.subProjectLog.create(LogQuery.deleteFinding({
+      userName: user.name,
+      subprojectName: finding.name,
+      subprojectId: finding.subProject.id,
+      approved: false,
+    }))
   }
 
   async uploadImageForTiptap(param: { findingId: number, userId: number, file: Express.Multer.File, originalName?: string }) {
@@ -643,6 +734,89 @@ export class FindingService {
     })
     unlinkFile(deleteFile.imagePath);
     return;
+  }
+
+  async getVersion(param: {
+    findingId: number,
+    type: DocumentType,
+  }) {
+    const versions = await this.prisma.versionList.findMany({
+      where: {
+        findingId: param.findingId,
+        type: param.type
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            profilePicture: true,
+          }
+        }
+      }
+
+    })
+    return versions;
+  }
+
+  async saveFindingVersion(param: {
+    userId: number,
+    findingId: number,
+    content: string,
+    type: DocumentType,
+    basedOn?: number
+  }) {
+    const finding = await this.prisma.finding.findFirst({
+      where: { id: param.findingId },
+      select: {
+        subProjectId: true,
+        cvssDetail: true
+      },
+    });
+
+    if (!finding) {
+      throw noaccess;
+    }
+
+    await this.authorizedEditor({
+      subprojectId: finding.subProjectId,
+      userId: param.userId,
+    });
+    let date: Date | undefined;
+    if (param.basedOn) {
+      const findVersion = await this.prisma.versionList.findFirst({
+        where: {
+          id: param.basedOn
+        }
+      })
+      if (findVersion) {
+        date = findVersion.createdAt;
+      }
+
+    }
+
+    const version = await this.prisma.versionList.create({
+      data: {
+        finding: {
+          connect: {
+            id: param.findingId
+          },
+        },
+        user: {
+          connect: {
+            id: param.userId
+          }
+        },
+        basedOn: date,
+        content: param.content,
+        type: param.type,
+
+      }
+    })
+
   }
 
   async getAllChatRoom(param: {

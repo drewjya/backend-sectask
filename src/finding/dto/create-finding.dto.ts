@@ -236,8 +236,20 @@ export class EditCVSSProp {
 }
 
 
-export type CvssParam = {
+export class SaveFindingVersion {
 
+  @IsNotEmpty()
+  @IsString()
+  @ApiProperty()
+  content: string;
+
+  @IsOptional()
+  @ApiProperty()
+  basedOnId?: number
+}
+
+
+export type CvssParam = {
   AV: string;
   AC: string;
   AT: string;
