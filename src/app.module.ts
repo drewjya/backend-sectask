@@ -6,7 +6,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { redisStore } from 'cache-manager-redis-yet';
 import { RedisClientOptions } from 'redis';
 import { AuthModule } from './auth/auth.module';
-import { ChatModule } from './chat/chat.module';
+
 import { EventModule } from './event/event.module';
 import { FindingModule } from './finding/finding.module';
 import { OutputModule } from './output/output.module';
@@ -35,7 +35,6 @@ import { VCacheModule } from './vcache/vcache.module';
     FindingModule,
     ProjectModule,
     SubprojectModule,
-    ChatModule,
     EventModule,
     AuthModule,
     OutputModule,

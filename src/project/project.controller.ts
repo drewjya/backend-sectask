@@ -15,13 +15,9 @@ import {
 import { Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guard/access-token.guard';
 
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProjectRole } from '@prisma/client';
-import { EventFile } from 'src/types/file';
-import { PROJECT_ON_MESSAGE } from 'src/utils/event';
 import { extractUserId } from 'src/utils/extract/userId';
 import { parseFile, uploadConfig } from 'src/utils/pipe/file.pipe';
-import { VCacheService } from 'src/vcache/vcache.service';
 import { ProjectService } from './project.service';
 import {
   AddMemberDto,
@@ -33,8 +29,6 @@ import {
 export class ProjectController {
   constructor(
     private readonly projectService: ProjectService,
-    private emitter: EventEmitter2,
-    private cache: VCacheService
   ) { }
   @UseGuards(AccessTokenGuard)
   @Post('new')
@@ -266,18 +260,7 @@ export class ProjectController {
       projectId: +id,
       acceptRole: [ProjectRole.TECHNICAL_WRITER],
     });
-    const val: EventFile = {
-      file: {
-        contentType: newFile.contentType,
-        createdAt: newFile.createdAt,
-        id: newFile.id,
-        name: newFile.name,
-        originalName: newFile.originalName,
-      },
-      projectId: +id,
-      type: 'remove',
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.REPORT, val);
+
   }
 
   @UseGuards(AccessTokenGuard)
@@ -295,17 +278,6 @@ export class ProjectController {
       type: 'Attachment',
       acceptRole: [ProjectRole.DEVELOPER],
     });
-    const val: EventFile = {
-      file: {
-        contentType: newFile.contentType,
-        createdAt: newFile.createdAt,
-        id: newFile.id,
-        name: newFile.name,
-        originalName: newFile.originalName,
-      },
-      projectId: +id,
-      type: 'remove',
-    };
-    this.emitter.emit(PROJECT_ON_MESSAGE.ATTACHMENT, val);
+
   }
 }

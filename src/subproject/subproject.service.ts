@@ -179,11 +179,26 @@ export class SubprojectService {
             id: true,
             name: true,
             deletedAt: true,
-            
-            createdBy: {
-              include: {
-                profilePicture: true,
+            likelihood: true,
+            impact: true,
+            retestHistories: {
+              take: 1,
+              select: {
+                status: true
               },
+              orderBy: {
+                createdAt: 'desc',
+              },
+            },
+
+            createdBy: {
+
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                profilePicture: true,
+              }
             },
           },
         },

@@ -152,7 +152,6 @@ export class FindingService {
       subprojectId: newFind.subProject.id,
       userId: members,
     })
-    this.output.subprojectSidebar('add', subproject, members)
     this.output.subprojectFinding('add', newFind)
 
     return {

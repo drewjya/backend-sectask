@@ -49,12 +49,11 @@ import {
   getSubProjectRoom,
   getUserRoom,
 } from 'src/utils/event';
-import { EventService } from './event.service';
 import { ASocket } from './interface/a-socket.interface';
 
 @WebSocketGateway({ namespace: 'event' })
 export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  constructor(private readonly eventService: EventService) { }
+  constructor() { }
   private readonly sessions: Map<number, ASocket> = new Map();
   @WebSocketServer()
   server: Server;
@@ -71,9 +70,9 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.leave(getUserRoom(client.userId));
     this.sessions.delete(client.userId);
   }
-  getConnection(userId: number) {
-    return this.sessions.get(userId);
-  }
+  // getConnection(userId: number) {
+  //   return this.sessions.get(userId);
+  // }
 
   @SubscribeMessage(PROJECT_MESSAGE.JOIN)
   onProjectJoin(client: ASocket, data: any) {
@@ -89,7 +88,7 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @OnEvent(PROJECT_ON_MESSAGE.SUBPROJECT)
-  async handleSubproject(payload: any) {
+  async handleProjectSubproject(payload: any) {
     const value: ProjectSubprojectEvent = payload;
 
     this.server

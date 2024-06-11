@@ -84,23 +84,24 @@ model ProjectLog {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
-  project     Project[]
+  project     Project   @relation(fields: [projectId], references: [id])
+  projectId   Int
 }
 
 model SubProjectLog {
-  id          Int          @id @default(autoincrement())
-  title       String
-  description String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  deletedAt   DateTime?
-  subproject  SubProject[]
+  id           Int        @id @default(autoincrement())
+  title        String
+  description  String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+  subproject   SubProject @relation(fields: [subProjectId], references: [id])
+  subProjectId Int
 }
 
 model Project {
   id       Int     @id @default(autoincrement())
   name     String
-  archived Boolean
   ownerId  Int
   owner    User    @relation(fields: [ownerId], references: [id])
 
