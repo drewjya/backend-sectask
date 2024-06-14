@@ -2,9 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import {
   PrismaClient,
   Project,
-  ProjectLog,
-  ProjectRole,
-  SubProjectLog,
+  ProjectRole
 } from '@prisma/client';
 import { ApiException } from 'src/utils/exception/api.exception';
 import { forbidden, notfound } from 'src/utils/exception/common.exception';
@@ -19,14 +17,12 @@ enum DocType {
   SUBPROJECT = 'SUBPROJECT',
   FINDING = 'FINDING',
 }
-export interface ProjectLogRes extends ProjectLog {
+export interface ProjectLogRes {
   documentId: number;
   type: DocType;
-}
-
-export interface SubprojectLogRes extends SubProjectLog {
-  documentId: number;
-  type: DocType;
+  title: string;
+  description: string;
+  createdAt: Date;
 }
 
 export class ProjectQuery {
@@ -47,8 +43,9 @@ export class ProjectQuery {
         },
         endDate: params.active ? {
           gte: (today())
-        } : undefined,
-        archived: !params.active,
+        } : {
+          lte: (today())
+        },
       },
       select: {
         id: true,
@@ -61,7 +58,6 @@ export class ProjectQuery {
         },
         name: true,
         projectPicture: true,
-        archived: true,
         startDate: true,
         endDate: true,
       },
@@ -85,7 +81,6 @@ export class ProjectQuery {
         endDate: params.active ? {
           gte: (today())
         } : undefined,
-        archived: !params.active,
       },
       select: {
         name: true,
@@ -194,7 +189,7 @@ export class ProjectQuery {
       include: {
         members: {
           select: {
-            user:{
+            user: {
               select: {
                 name: true
               }
@@ -220,7 +215,7 @@ export class ProjectQuery {
     if (!subprojectData) {
       throw notfound;
     }
-    if (subprojectData.project.archived) {
+    if (!subprojectData.project) {
       throw new ApiException({
         status: HttpStatus.BAD_REQUEST,
         data: 'archived',
@@ -320,6 +315,7 @@ export class ProjectQuery {
           subProject.recentActivities.forEach((e) => {
             activities.push({
               ...e,
+
               documentId: subProject.id,
               type: DocType.SUBPROJECT,
             });

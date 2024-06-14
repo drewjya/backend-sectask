@@ -32,7 +32,6 @@ export class ProjectService {
     const project = await this.prisma.project.create({
       data: {
         name: createProjectDto.name,
-        archived: false,
         endDate: createProjectDto.endDate,
         startDate: createProjectDto.startDate,
         members: {
@@ -171,40 +170,6 @@ export class ProjectService {
 
   async findRecentUpdates(userId: number) {
     return this.projectQuery.fetchRecentActivitiesByUserId(userId);
-  }
-
-  async archivedProject(projectId: number, userId: number) {
-    await this.projectQuery.checkIfProjectActive({
-      projectId,
-      userId,
-      role: [ProjectRole.PM],
-    });
-    const log = await this.prisma.$transaction(async (tx) => {
-
-      const project = await tx.project.update({
-        where: {
-          id: projectId,
-        },
-        data: {
-          archived: true,
-        },
-        include: {
-          owner: {
-            select: {
-              name: true,
-            }
-          }
-        }
-      });
-      const log = await tx.projectLog.create(LogQuery.archived({
-        projectId: project.id,
-        projectName: project.name,
-        userName: project.owner.name
-      }))
-      return log
-
-    })
-    this.output.projectLog(projectId, log)
   }
 
   async searchMember(param: { email: string; projectId: number }) {

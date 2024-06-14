@@ -112,6 +112,7 @@ export class FindingService {
             id: true,
           }
         },
+        retestHistories: {},
         createdBy: {
           select: {
             id: true,
@@ -352,8 +353,24 @@ export class FindingService {
         impact: param.properties.impact,
         likelihood: param.properties.likelihood,
       },
+      include: {
+        retestHistories: {
+          take: 1,
+          orderBy: {
+            createdAt: 'desc'
+          }
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            profilePicture: true
+          }
+        }
+      }
     });
     this.notifyEdit({ userId: param.userId, findingId: param.findingId });
+    this.output.subprojectFinding('edit', newFInding)
     this.output.findingFProp({
       values: param.properties,
       findingId: param.findingId
@@ -392,6 +409,12 @@ export class FindingService {
             name: true,
             profilePicture: true,
           },
+        },
+        retestHistories: {
+          take: 1,
+          orderBy: {
+            createdAt: 'desc'
+          }
         },
         subProject: {
           select: {
@@ -477,8 +500,45 @@ export class FindingService {
       }
     })
 
+    const newFin = await this.prisma.finding.findFirst({
+      where: {
+        id: finding.id,
+      },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            profilePicture: true,
+          },
+        },
+        retestHistories: {
+          take: 1,
+          orderBy: {
+            createdAt: 'desc'
+          }
+        },
+        subProject: {
+          select: {
+            id: true,
+            project: {
+              select: {
+                id: true,
+                members: {
+                  select: {
+                    userId: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      }
+    })
+
     //TODO: ADD LOG
     //TODO: ADD EVENT
+    this.output.subprojectFinding("edit", newFin);
     this.output.findingRetest({
       retest: retest,
       findingId: param.findingId,
@@ -638,6 +698,9 @@ export class FindingService {
                 }
               }
             },
+            retestHistories: {
+              take: 1,
+            },
             createdBy: {
               include: {
                 profilePicture: true,
@@ -701,6 +764,9 @@ export class FindingService {
         deletedAt: new Date(),
       },
       include: {
+        retestHistories: {
+          take: 1,
+        },
         createdBy: {
           select: {
             id: true,

@@ -95,15 +95,15 @@ model SubProjectLog {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   deletedAt    DateTime?
-  subproject   SubProject @relation(fields: [subProjectId], references: [id])
+  subproject   SubProject @relation(fields: [subProjectId], references: [id], onDelete: Cascade)
   subProjectId Int
 }
 
 model Project {
-  id       Int     @id @default(autoincrement())
-  name     String
-  ownerId  Int
-  owner    User    @relation(fields: [ownerId], references: [id])
+  id      Int    @id @default(autoincrement())
+  name    String
+  ownerId Int
+  owner   User   @relation(fields: [ownerId], references: [id])
 
   startDate        DateTime
   endDate          DateTime

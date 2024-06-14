@@ -474,9 +474,7 @@ export class SubprojectService {
       await tx.subProjectLog.deleteMany({
         where: {
           subproject: {
-            every: {
-              id: subproject.id
-            }
+            id: subproject.id
           }
         }
       })

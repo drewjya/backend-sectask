@@ -23,7 +23,8 @@ export type SubprojectFindingDto = {
     findingId: number;
     name: string;
     deletedAt?: Date;
-    risk?: string;
+    impact?: string;
+    likelihood?: string;
     status?: string;
     owner: OwnerFinding;
   };

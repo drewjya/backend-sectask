@@ -43,6 +43,18 @@ export interface FindingWithCreatedBy extends Finding {
 
 }
 
+export interface FindingSubprojectEvent extends Finding {
+    createdBy: {
+        id: number;
+        name: string;
+        profilePicture?: File
+    },
+    retestHistories: {
+        status: string
+    }[]
+
+}
+
 @Injectable()
 export class OutputService {
     constructor(private emitter: EventEmitter2) { }
@@ -207,12 +219,15 @@ export class OutputService {
         this.emitter.emit(SUBPROJECT_ON_MESSAGE.LOG, val);
     }
 
-    subprojectFinding(type: 'add' | 'edit' | 'remove', finding: FindingWithCreatedBy) {
+    subprojectFinding(type: 'add' | 'edit' | 'remove', finding: FindingSubprojectEvent) {
         const newFinding: SubprojectFindingDto = {
             finding: {
                 findingId: finding.id,
                 name: finding.name,
                 deletedAt: finding.deletedAt,
+                impact: finding.impact,
+                likelihood: finding.likelihood,
+                status: finding.retestHistories[0]?.status,
                 owner: {
                     id: finding.createdBy.id,
                     name: finding.createdBy.name,

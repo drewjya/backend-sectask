@@ -91,6 +91,8 @@ export class ProjectController {
   @Get('member')
   searchMemberInit(@Req() req: Request, @Query('email') email: string) {
     const userId = extractUserId(req);
+    console.log(userId);
+
     return this.projectService.searchMemberInit({ email, userId });
   }
 
@@ -147,12 +149,7 @@ export class ProjectController {
 
   }
 
-  @UseGuards(AccessTokenGuard)
-  @Post(':id/archive')
-  archivedProject(@Req() req: Request, @Param('id') id: string) {
-    const userId = extractUserId(req);
-    return this.projectService.archivedProject(+id, userId);
-  }
+
 
   @UseGuards(AccessTokenGuard)
   @Post(':id/edit')
