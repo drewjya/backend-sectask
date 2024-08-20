@@ -604,4 +604,45 @@ export class ProjectService {
     unlinkFile(attachment.imagePath);
     return attachment;
   }
+
+
+  async searchProject({
+    userId,
+    name
+  }: {
+    userId: number,
+    name: string
+  }) {
+    const projects = await this.prisma.project.findMany({
+      take: 10,
+      where: {
+        name: {
+          contains: name,
+          mode: 'insensitive'
+        },
+        AND: {
+
+
+          OR: [
+            {
+              members: {
+                some: {
+                  member: {
+                    id: userId
+                  }
+                },
+
+              },
+            }, {
+              owner: {
+                id: userId
+              }
+            }
+          ]
+        }
+      }
+    })
+
+    return projects
+  }
 }

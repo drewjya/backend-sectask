@@ -335,7 +335,7 @@ export class OutputService {
             subprojectId: subprojectId
         })
     }
-    findingDeleted(findingId: number, status: 'deleted' | 'approved') {
+    findingDeleted(findingId: number, status: 'deleted' | 'approved'|'rejected') {
         this.emitter.emit(FINDING_ON_MESSAGE.DELETE, {
             findingId: findingId,
             status: status

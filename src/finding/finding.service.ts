@@ -241,6 +241,7 @@ export class FindingService {
             createdAt: 'desc'
           }
         },
+
         createdBy: {
           select: {
             profilePicture: true,
@@ -268,9 +269,9 @@ export class FindingService {
           },
         },
         testerFinding: {
-          where: {
-            userId: param.userId,
-          },
+          // where: {
+          //   userId: param.userId,
+          // },
           include: {
             user: {
               select: {
@@ -634,6 +635,81 @@ export class FindingService {
       },
     });
     this.output.findingCvss(val)
+  }
+
+
+  async rejectFindingDeletetion(param: { userId: number, findingId: number }) {
+    const finding = await this.prisma.finding.findFirst({
+      where: { id: param.findingId },
+      select: {
+        deletedAt: true,
+        name: true,
+        descriptionId: true,
+        threatAndRiskId: true,
+        FindingFile: {
+          include: {
+            file: true,
+          }
+        },
+        subProject: {
+          select: {
+            id: true,
+            project: {
+              select: {
+                ownerId: true
+              }
+            }
+          }
+        }
+
+      },
+    });
+    if (finding.deletedAt && finding.subProject.project.ownerId === param.userId) {
+
+
+      const newF = await this.prisma.finding.update({
+        where: {
+          id: param.findingId,
+        },
+        data: {
+          deletedAt: null,
+        },
+        include: {
+          subProject: {
+            include: {
+              project: {
+                include: {
+                  members: true,
+                }
+              }
+            }
+          },
+          retestHistories: {
+            take: 1,
+          },
+          createdBy: {
+            include: {
+              profilePicture: true,
+            }
+          }
+        }
+      })
+
+      const user = await this.prisma.user.findFirst({ where: { id: param.userId } })
+      const log = await this.prisma.subProjectLog.create(LogQuery.deleteFinding({
+        userName: user.name,
+        subprojectName: finding.name,
+        subprojectId: finding.subProject.id,
+        approved: true, rejected: true
+      }))
+
+      this.output.subprojectFinding('edit', newF)
+
+      this.output.subprojectLog(newF.subProjectId, log)
+      this.output.findingDeleted(param.findingId, 'rejected')
+      return newF
+    }
+    throw unauthorized;
   }
 
   async deleteFinding(param: { userId: number; findingId: number }) {

@@ -179,11 +179,12 @@ export class LogQuery {
     userName: string,
     subprojectName: string,
     subprojectId: number,
-    approved: boolean
+    approved: boolean,
+    rejected?: boolean
   }) {
     return {
       data: {
-        title: `Finding Deleted` + `${param.approved ? ' Confirmed' : ''}`,
+        title: `Finding Deleted` + `${param.approved ? param.rejected ? ' Rejected' : 'Confirmed' : ''}`,
         description: `<p><strong>${param.userName}</strong> ${param.approved ? 'approved' : 'deleted'} ${param.subprojectName}.</p>`,
         subproject: {
           connect: {

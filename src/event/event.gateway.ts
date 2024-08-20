@@ -367,7 +367,7 @@ export class EventGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @OnEvent(FINDING_ON_MESSAGE.DELETE)
-  onFindingDeleted(payload: { findingId: number, status: 'deleted' | 'approved' }) {
+  onFindingDeleted(payload: { findingId: number, status: 'deleted' | 'approved'|'rejected' }) {
     this.server.in(getFindingRoom(payload.findingId)).emit(FINDING_EVENT.DELETE, payload)
   }
 }

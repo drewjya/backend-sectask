@@ -96,6 +96,14 @@ export class ProjectController {
     return this.projectService.searchMemberInit({ email, userId });
   }
 
+@UseGuards(AccessTokenGuard)
+@Get('search')
+searchProject(@Req() req:Request, @Query('name') name:string){
+  const userId = extractUserId(req);
+
+    return this.projectService.searchProject({ name, userId });
+}
+
   @UseGuards(AccessTokenGuard)
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: Request) {

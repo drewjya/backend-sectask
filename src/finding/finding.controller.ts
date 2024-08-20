@@ -222,6 +222,16 @@ export class FindingController {
   }
 
   @UseGuards(AccessTokenGuard)
+  @Post('reject/:id')
+  reject(@Param('id') id: string, @Req() req: Request) {
+    const userId = extractUserId(req);
+    return this.findingService.rejectFindingDeletetion({
+      findingId: +id,
+      userId: userId,
+    });
+  }
+
+  @UseGuards(AccessTokenGuard)
   @Delete(':id')
   delete(@Param('id') id: string, @Req() req: Request) {
     const userId = extractUserId(req);
